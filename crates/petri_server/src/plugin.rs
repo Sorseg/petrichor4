@@ -96,7 +96,10 @@ impl Plugin for PetriServerPlugin {
                             ReadMassProperties::default(),
                             RigidBody::Dynamic,
                             LockedAxes::ROTATION_LOCKED,
-                            Damping{ linear_damping: 2.0, angular_damping: 0.0}
+                            Damping {
+                                linear_damping: 2.0,
+                                angular_damping: 0.0,
+                            },
                         ));
                     }
                     ServerEvent::ClientDisconnected { client_id, reason } => {
