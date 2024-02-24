@@ -1,6 +1,5 @@
 use bevy::{
-    ecs::query::QueryEntityError, input::keyboard::KeyboardInput, prelude::*,
-    time::common_conditions::on_timer,
+    core_pipeline::Skybox, ecs::query::QueryEntityError, input::keyboard::KeyboardInput, prelude::*,
 };
 use bevy_replicon::{
     client_just_connected,
@@ -208,6 +207,7 @@ impl Plugin for PetriClientPlugin {
             mut commands: Commands,
             mut meshes: ResMut<Assets<Mesh>>,
             mut materials: ResMut<Assets<StandardMaterial>>,
+            asset_server: Res<AssetServer>,
         ) {
             // circular base
             commands.spawn(PbrBundle {
@@ -218,21 +218,23 @@ impl Plugin for PetriClientPlugin {
                 )),
                 ..default()
             });
-            // light
-            commands.spawn(PointLightBundle {
-                point_light: PointLight {
-                    intensity: 1500.0,
-                    shadows_enabled: true,
+
+            // camera
+            commands.spawn((
+                Camera3dBundle {
+                    transform: Transform::from_xyz(-2.5, 4.5, -9.0).looking_at(Vec3::ZERO, Vec3::Y),
                     ..default()
                 },
-                transform: Transform::from_xyz(4.0, 8.0, 4.0),
-                ..default()
-            });
-            // camera
-            commands.spawn(Camera3dBundle {
-                transform: Transform::from_xyz(-2.5, 4.5, -9.0).looking_at(Vec3::ZERO, Vec3::Y),
-                ..default()
-            });
+                Skybox {
+                    image: asset_server.load("diffuse.ktx2"),
+                    brightness: 150.0,
+                },
+                EnvironmentMapLight {
+                    specular_map: asset_server.load("specular.ktx2"),
+                    diffuse_map: asset_server.load("diffuse.ktx2"),
+                    intensity: 150.0,
+                },
+            ));
         }
 
         fn setup_connection(
