@@ -191,7 +191,7 @@ impl Plugin for PetriClientPlugin {
 
         fn move_player_from_network(mut players: Query<(&mut Transform, &PlayerPos)>) {
             for (mut t, p) in &mut players {
-                t.translation = p.0;
+                *t = p.0.into();
             }
         }
 

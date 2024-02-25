@@ -1,12 +1,14 @@
 use bevy::prelude::*;
+use bevy_rapier3d::prelude::*;
 use bevy_replicon::{
-    prelude::{FromClient, NetworkChannels, RenetServer, Replication},
+    prelude::*,
     renet::{
         transport::{NetcodeServerTransport, ServerAuthentication, ServerConfig},
         ConnectionConfig, ServerEvent,
     },
 };
 use petri_shared::{Player, PlayerColor, PlayerName, PlayerPos, SetName};
+use rand::random;
 use std::{
     net::{Ipv4Addr, SocketAddr, UdpSocket},
     time::SystemTime,
@@ -16,8 +18,14 @@ pub struct PetriServerPlugin;
 
 impl Plugin for PetriServerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (server_event_system, receive_names))
-            .add_systems(Startup, setup_server.map(Result::unwrap));
+        app.add_systems(
+            Startup,
+            (setup_physics, setup_server_networking.map(Result::unwrap)),
+        )
+        .add_systems(Update, (server_event_system, receive_names))
+        // FIXME(opt): make sure `Update` schedule is running the same frequency as the server sends event
+        .add_systems(Update, update_player_pos.before(ServerSet::Send))
+        .add_plugins(RapierPhysicsPlugin::<NoUserData>::default());
 
         fn receive_names(
             mut events: EventReader<FromClient<SetName>>,
@@ -53,13 +61,16 @@ impl Plugin for PetriServerPlugin {
                         let b = ((client_id.raw() % 39) as f32) / 39.0;
                         commands.spawn((
                             Player(*client_id),
-                            PlayerPos(Vec3 {
-                                x: (rand::random::<f32>() - 0.5) * 5.0,
-                                y: 0.5,
-                                z: (rand::random::<f32>() - 0.5) * 5.0,
-                            }),
+                            TransformBundle::from_transform(Transform::from_xyz(
+                                random::<f32>() * 3.0 + 1.5,
+                                2.5,
+                                random::<f32>() * 3.0 + 1.5,
+                            )),
+                            PlayerPos(default()),
                             PlayerColor(Color::rgb(r, g, b)),
                             Replication,
+                            Collider::cuboid(0.5, 0.5, 0.5),
+                            RigidBody::Dynamic,
                         ));
                     }
                     ServerEvent::ClientDisconnected { client_id, reason } => {
@@ -74,7 +85,13 @@ impl Plugin for PetriServerPlugin {
             }
         }
 
-        fn setup_server(
+        fn update_player_pos(mut players: Query<(&GlobalTransform, &mut PlayerPos)>) {
+            players.iter_mut().for_each(|(local_pos, mut shared_pos)| {
+                shared_pos.0 = *local_pos;
+            })
+        }
+
+        fn setup_server_networking(
             mut commands: Commands,
             network_channels: Res<NetworkChannels>,
         ) -> anyhow::Result<()> {
@@ -106,4 +123,9 @@ impl Plugin for PetriServerPlugin {
             Ok(())
         }
     }
+}
+
+fn setup_physics(mut commands: Commands) {
+    //floor
+    commands.spawn(Collider::cuboid(1000.0, 0.1, 1000.0));
 }

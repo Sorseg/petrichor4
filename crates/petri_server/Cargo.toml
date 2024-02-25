@@ -11,5 +11,5 @@ bevy_replicon = {workspace = true}
 serde = {workspace = true}
 petri_shared = {path="../petri_shared"}
 anyhow = {workspace = true}
-clap = { version = "=4.1" , features = ["derive"]}
 rand = "0.8"
+bevy_rapier3d = { version = "0.25" , default-features = false, features = ["dim3"] }

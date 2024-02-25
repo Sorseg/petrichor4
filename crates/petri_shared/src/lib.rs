@@ -10,7 +10,7 @@ pub struct Player(pub ClientId);
 pub struct MoveDirection(pub Vec2);
 
 #[derive(Component, Serialize, Deserialize)]
-pub struct PlayerPos(pub Vec3);
+pub struct PlayerPos(pub GlobalTransform);
 
 #[derive(Component, Serialize, Deserialize)]
 pub struct PlayerColor(pub Color);
