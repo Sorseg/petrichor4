@@ -3,4 +3,5 @@ members = ["crates/*"]
 resolver = "2"
 
 [workspace.dependencies]
-bevy = "0.13.0"
+bevy = "0.12"
+bevy_replicon = "0.22.0"
