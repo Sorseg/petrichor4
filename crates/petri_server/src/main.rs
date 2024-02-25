@@ -1,3 +1,4 @@
+mod blob_assets;
 mod plugin;
 
 use crate::plugin::PetriServerPlugin;
@@ -10,6 +11,7 @@ fn main() {
         .add_plugins((
             MinimalPlugins,
             LogPlugin::default(),
+            AssetPlugin::default(),
             ReplicationPlugins
                 .build()
                 .disable::<ClientPlugin>()

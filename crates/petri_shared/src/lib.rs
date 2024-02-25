@@ -41,7 +41,6 @@ pub fn get_player_capsule_size() -> (f32, f32) {
     let capsule_total_height = 1.4;
 
     let capsule_total_half_height = capsule_total_height / 2.0;
-    let capsule_segment_half_height =
-        capsule_total_half_height - (capsule_diameter / 2.0);
+    let capsule_segment_half_height = capsule_total_half_height - (capsule_diameter / 2.0);
     (capsule_diameter, capsule_segment_half_height)
 }

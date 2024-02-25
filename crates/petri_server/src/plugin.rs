@@ -1,5 +1,5 @@
-use bevy::prelude::*;
-use bevy::utils::HashMap;
+use crate::blob_assets::{Blob, BlobLoaderPlugin};
+use bevy::{prelude::*, utils::HashMap};
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::{
     prelude::*,
@@ -8,9 +8,13 @@ use bevy_replicon::{
         ConnectionConfig, ServerEvent,
     },
 };
-use petri_shared::{get_player_capsule_size, MoveDirection, Player, PlayerColor, PlayerName, PlayerPos, SetName};
+use obj::{load_obj, Obj, Position};
+use petri_shared::{
+    get_player_capsule_size, MoveDirection, Player, PlayerColor, PlayerName, PlayerPos, SetName,
+};
 use rand::random;
 use std::{
+    io::Cursor,
     net::{Ipv4Addr, SocketAddr, UdpSocket},
     time::SystemTime,
 };
@@ -19,21 +23,24 @@ pub struct PetriServerPlugin;
 
 impl Plugin for PetriServerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Startup,
-            (setup_physics, setup_server_networking.map(Result::unwrap)),
-        )
-        .add_systems(
-            Update,
-            (
-                server_event_system,
-                receive_names,
-                move_clients.after(ServerSet::Receive),
-            ),
-        )
-        // FIXME(opt): make sure `Update` schedule is running the same frequency as the server sends event
-        .add_systems(Update, update_player_pos.before(ServerSet::Send))
-        .add_plugins(RapierPhysicsPlugin::<NoUserData>::default());
+        app.add_plugins(BlobLoaderPlugin)
+            .init_resource::<ObjFileWithColliderHandle>()
+            .add_systems(
+                Startup,
+                (load_collider, setup_server_networking.map(Result::unwrap)),
+            )
+            .add_systems(
+                Update,
+                (
+                    server_event_system,
+                    receive_names,
+                    load_collider_from_mesh,
+                    move_clients.after(ServerSet::Receive),
+                ),
+            )
+            // FIXME(opt): make sure `Update` schedule is running the same frequency as the server sends event
+            .add_systems(Update, update_player_pos.before(ServerSet::Send))
+            .add_plugins(RapierPhysicsPlugin::<NoUserData>::default());
 
         fn receive_names(
             mut events: EventReader<FromClient<SetName>>,
@@ -68,7 +75,8 @@ impl Plugin for PetriServerPlugin {
                         let g = ((client_id.raw() % 27) as f32) / 27.0;
                         let b = ((client_id.raw() % 39) as f32) / 39.0;
 
-                        let (capsule_diameter, capsule_segment_half_height) = get_player_capsule_size();
+                        let (capsule_diameter, capsule_segment_half_height) =
+                            get_player_capsule_size();
 
                         commands.spawn((
                             Player(*client_id),
@@ -88,6 +96,7 @@ impl Plugin for PetriServerPlugin {
                             ReadMassProperties::default(),
                             RigidBody::Dynamic,
                             LockedAxes::ROTATION_LOCKED,
+                            Damping{ linear_damping: 2.0, angular_damping: 0.0}
                         ));
                     }
                     ServerEvent::ClientDisconnected { client_id, reason } => {
@@ -142,19 +151,46 @@ impl Plugin for PetriServerPlugin {
     }
 }
 
-fn setup_physics(mut commands: Commands) {
-    //floor
-    commands.spawn((
-        Collider::cuboid(1000.0, 0.1, 1000.0),
-        Restitution {
-            coefficient: 0.0,
-            ..default()
-        },
-        Friction {
-            coefficient: 10.0,
-            ..default()
-        },
-    ));
+// TODO: is it ok to create default handle?
+#[derive(Resource, Default)]
+struct ObjFileWithColliderHandle(Handle<Blob>);
+
+fn load_collider_from_mesh(
+    mut commands: Commands,
+    mut ev_asset: EventReader<AssetEvent<Blob>>,
+    blob: Res<ObjFileWithColliderHandle>,
+    blobs: Res<Assets<Blob>>,
+    mut loaded: Local<bool>,
+) {
+    if *loaded {
+        return;
+    }
+    // FIXME: move all of this to a new "ColliderAssetLoader"
+    if ev_asset.read().next().is_some() {
+        if let Some(Blob(bytes)) = blobs.get(&blob.0) {
+            info!("Gotmesh? {:x?}", &bytes[0..10]);
+            let obj: Obj<Position> = load_obj(Cursor::new(bytes)).unwrap();
+            commands.spawn(Collider::trimesh(
+                obj.vertices
+                    .into_iter()
+                    .map(|v| Vec3 {
+                        x: v.position[0],
+                        y: v.position[1],
+                        z: v.position[2],
+                    })
+                    .collect(),
+                obj.indices
+                    .chunks(3)
+                    .map(|c| [c[0] as u32, c[1] as u32, c[2] as u32])
+                    .collect(),
+            ));
+            *loaded = true;
+        }
+    }
+}
+
+fn load_collider(asset_server: Res<AssetServer>, mut blob: ResMut<ObjFileWithColliderHandle>) {
+    blob.0 = asset_server.load("level_collider.obj");
 }
 
 fn move_clients(
@@ -169,7 +205,7 @@ fn move_clients(
 
     for event in events.read() {
         info!("Received move event");
-        const KONSTANTA: f32 = 0.2;
+        const KONSTANTA: f32 = 0.1;
 
         if let Some((force, props)) = player_to_ext_force.get_mut(&event.client_id) {
             info!("{}", props.mass);
@@ -179,7 +215,8 @@ fn move_clients(
                 y: 0.0,
                 // N.B.
                 z: normalized.y,
-            } * KONSTANTA * props.mass;
+            } * KONSTANTA
+                * props.mass;
         } else {
             info!("POLTERGEIST IS MOVING");
         }

@@ -10,7 +10,9 @@ use bevy_replicon::{
         ConnectionConfig,
     },
 };
-use petri_shared::{get_player_capsule_size, MoveDirection, Player, PlayerColor, PlayerName, PlayerPos, SetName};
+use petri_shared::{
+    get_player_capsule_size, MoveDirection, Player, PlayerColor, PlayerName, PlayerPos, SetName,
+};
 use std::{
     net::{Ipv4Addr, SocketAddr, UdpSocket},
     time::{Duration, SystemTime},
@@ -184,7 +186,10 @@ impl Plugin for PetriClientPlugin {
                 commands
                     .entity(entity)
                     .insert(PbrBundle {
-                        mesh: meshes.add(Capsule3d::new(capsule_diameter / 2.0, capsule_segment_half_height * 2.0)),
+                        mesh: meshes.add(Capsule3d::new(
+                            capsule_diameter / 2.0,
+                            capsule_segment_half_height * 2.0,
+                        )),
                         material: materials.add(player_color.0),
                         transform: Transform::from_xyz(0.0, 0.5, 0.0),
                         ..default()
@@ -226,7 +231,7 @@ impl Plugin for PetriClientPlugin {
             });
             // camera
             commands.spawn(Camera3dBundle {
-                transform: Transform::from_xyz(-2.5, 4.5, 9.0).looking_at(Vec3::ZERO, Vec3::Y),
+                transform: Transform::from_xyz(-2.5, 4.5, -9.0).looking_at(Vec3::ZERO, Vec3::Y),
                 ..default()
             });
         }
@@ -330,9 +335,10 @@ impl Plugin for PetriClientPlugin {
 
 fn send_movement(mut writer: EventWriter<MoveDirection>, input: Res<ButtonInput<KeyCode>>) {
     let mut direction = Vec2::default();
+    // FIXME: figure out the correct directions
     static KEYBINDINGS: &[(KeyCode, Vec2)] = &[
-        (KeyCode::KeyA, Vec2::new(-1.0, 0.0)),
-        (KeyCode::KeyD, Vec2::new(1.0, 0.0)),
+        (KeyCode::KeyA, Vec2::new(1.0, 0.0)),
+        (KeyCode::KeyD, Vec2::new(-1.0, 0.0)),
         (KeyCode::KeyW, Vec2::new(0.0, 1.0)),
         (KeyCode::KeyS, Vec2::new(0.0, -1.0)),
     ];
