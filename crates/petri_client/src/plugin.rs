@@ -14,7 +14,7 @@ use petri_shared::{
 };
 use std::{
     net::{Ipv4Addr, SocketAddr, UdpSocket},
-    time::{Duration, SystemTime},
+    time::SystemTime,
 };
 
 pub struct PetriClientPlugin;
@@ -237,10 +237,15 @@ impl Plugin for PetriClientPlugin {
             ));
         }
 
+        // Player id of the player who is playing this instance of the game
+        #[derive(Resource)]
+        struct MyPlayerId(u64);
+
         fn setup_connection(
             mut commands: Commands,
             network_channels: Res<NetworkChannels>,
         ) -> anyhow::Result<()> {
+            info!("Connecting...");
             let server_channels_config = network_channels.get_server_configs();
             let client_channels_config = network_channels.get_client_configs();
 
@@ -260,14 +265,18 @@ impl Plugin for PetriClientPlugin {
                 server_addr,
                 user_data: None,
             };
+
             let transport = NetcodeClientTransport::new(current_time, authentication, socket)?;
 
+            commands.insert_resource(MyPlayerId(client_id));
             commands.insert_resource(client);
             commands.insert_resource(transport);
+
             Ok(())
         }
 
         fn send_name(mut set_name: EventWriter<SetName>, login: Res<CurrentUserLogin>) {
+            info!("sending my name {:?}", login.0);
             set_name.send(SetName(login.0.clone()));
         }
 
