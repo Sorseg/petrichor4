@@ -35,11 +35,10 @@ impl Plugin for PetriServerPlugin {
                     server_event_system,
                     receive_names,
                     load_collider_from_mesh,
-                    move_clients.after(ServerSet::Receive),
+                    move_clients,
+                    update_player_pos,
                 ),
             )
-            // FIXME(opt): make sure `Update` schedule is running the same frequency as the server sends event
-            .add_systems(Update, update_player_pos.before(ServerSet::Send))
             .add_plugins(RapierPhysicsPlugin::<NoUserData>::default());
 
         fn receive_names(
