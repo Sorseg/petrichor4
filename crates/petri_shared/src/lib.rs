@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_replicon::renet::ClientId;
+use bevy_replicon::{prelude::*, renet::ClientId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Component, Serialize, Deserialize)]
@@ -14,3 +14,14 @@ pub struct PlayerPos(pub Vec3);
 
 #[derive(Component, Serialize, Deserialize)]
 pub struct PlayerColor(pub Color);
+
+pub struct PetriSharedSetup;
+
+impl Plugin for PetriSharedSetup {
+    fn build(&self, app: &mut App) {
+        app.replicate::<Player>()
+            .replicate::<PlayerColor>()
+            .replicate::<PlayerPos>()
+            .add_client_event::<MoveDirection>(EventType::Ordered);
+    }
+}
