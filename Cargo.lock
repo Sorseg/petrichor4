@@ -186,6 +186,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.80"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ad32ce52e4161730f7098c077cd2ed6229b5804ccf99e5366be1ab72a98b4e1"
+
+[[package]]
 name = "approx"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1577,7 +1583,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e16e44ab292b1dddfdaf7be62cfd8877df52f2f3fde5858d95bab606be259f20"
 dependencies = [
  "bitflags 2.4.2",
- "libloading 0.7.4",
+ "libloading 0.8.1",
  "winapi",
 ]
 
@@ -2827,6 +2833,7 @@ dependencies = [
 name = "petri_client"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bevy",
  "bevy_replicon",
 ]
@@ -2835,8 +2842,11 @@ dependencies = [
 name = "petri_server"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bevy",
  "bevy_replicon",
+ "petri_shared",
+ "serde",
 ]
 
 [[package]]
@@ -2844,6 +2854,8 @@ name = "petri_shared"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy_replicon",
+ "serde",
 ]
 
 [[package]]
@@ -3753,7 +3765,7 @@ dependencies = [
  "js-sys",
  "khronos-egl",
  "libc",
- "libloading 0.7.4",
+ "libloading 0.8.1",
  "log",
  "metal",
  "naga",

@@ -7,3 +7,5 @@ edition = "2021"
 
 [dependencies]
 bevy = {workspace = true}
+serde = {workspace = true}
+bevy_replicon = {workspace = true}

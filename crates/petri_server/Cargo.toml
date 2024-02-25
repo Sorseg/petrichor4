@@ -8,3 +8,6 @@ edition = "2021"
 [dependencies]
 bevy = {workspace = true}
 bevy_replicon = {workspace = true}
+serde = {workspace = true}
+petri_shared = {path="../petri_shared"}
+anyhow = {workspace = true}
