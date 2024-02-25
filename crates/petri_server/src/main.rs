@@ -3,7 +3,7 @@ use bevy_replicon::{
     prelude::*,
     renet::{
         transport::{NetcodeServerTransport, ServerAuthentication, ServerConfig},
-        ClientId, ConnectionConfig, ServerEvent,
+        ConnectionConfig, ServerEvent,
     },
 };
 use petri_shared::{MoveDirection, Player, PlayerColor, PlayerPos};
@@ -51,7 +51,11 @@ fn server_event_system(
                 let b = ((client_id.raw() % 39) as f32) / 39.0;
                 commands.spawn((
                     Player(*client_id),
-                    PlayerPos(Vec3::ZERO),
+                    PlayerPos(Vec3 {
+                        x: (rand::random::<f32>() - 0.5) * 5.0,
+                        y: 0.5,
+                        z: (rand::random::<f32>() - 0.5) * 5.0,
+                    }),
                     PlayerColor(Color::rgb(r, g, b)),
                     Replication,
                 ));

@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_replicon::renet::ClientId;
 use serde::{Deserialize, Serialize};
 
-#[derive(Component, Serialize, Deserialize)]
+#[derive(Debug, Component, Serialize, Deserialize)]
 pub struct Player(pub ClientId);
 
 /// A movement event for the controlled box.

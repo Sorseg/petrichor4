@@ -1,6 +1,7 @@
 //! A simple 3D scene with light shining over a cube sitting on a plane.
 
 use bevy::prelude::*;
+use bevy_replicon::prelude::AppReplicationExt;
 use bevy_replicon::{
     prelude::NetworkChannels,
     renet::{
@@ -14,16 +15,47 @@ use std::{
     net::{Ipv4Addr, SocketAddr, UdpSocket},
     time::{Duration, SystemTime},
 };
-use bevy_replicon::prelude::AppReplicationExt;
+
+#[derive(Component)]
+struct PlayerHydrated;
 
 fn main() {
+    fn add_mesh_to_players(
+        mut commands: Commands,
+        mut meshes: ResMut<Assets<Mesh>>,
+        mut materials: ResMut<Assets<StandardMaterial>>,
+        players_without_mesh: Query<(Entity, &Player, &PlayerColor), (Without<PlayerHydrated>)>,
+    ) {
+        for (entity, player, player_color) in players_without_mesh.iter() {
+            info!("Adding mesh to {player:?}");
+            commands
+                .entity(entity)
+                .insert(PbrBundle {
+                    mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+                    material: materials.add(player_color.0.into()),
+                    transform: Transform::from_xyz(0.0, 0.5, 0.0),
+                    ..default()
+                })
+                .insert(PlayerHydrated);
+        }
+    }
+
+    fn move_player_from_network(mut players: Query<(&mut Transform, &PlayerPos)>) {
+        for (mut t, p) in &mut players {
+            t.translation = p.0;
+        }
+    }
+
     App::new()
         .add_plugins((DefaultPlugins, ReplicationPlugins))
         .replicate::<Player>()
         .replicate::<PlayerColor>()
         .replicate::<PlayerPos>()
         .add_systems(Startup, (setup, setup_connection.map(Result::unwrap)))
-        .add_systems(Update, log_players)
+        .add_systems(
+            Update,
+            (log_players, add_mesh_to_players, move_player_from_network),
+        )
         .run();
 }
 
