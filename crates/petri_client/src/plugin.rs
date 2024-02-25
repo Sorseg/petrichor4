@@ -1,21 +1,168 @@
-use bevy::prelude::*;
+use bevy::{input::keyboard::KeyboardInput, prelude::*};
 use bevy_replicon::{
+    client_just_connected,
     prelude::{NetworkChannels, RenetClient},
     renet::{
         transport::{ClientAuthentication, NetcodeClientTransport},
         ConnectionConfig,
     },
 };
-use petri_shared::{Player, PlayerColor, PlayerPos};
+use petri_shared::{Player, PlayerColor, PlayerName, PlayerPos, SetName};
 use std::{
     net::{Ipv4Addr, SocketAddr, UdpSocket},
-    time::SystemTime,
+    time::{Duration, SystemTime},
 };
 
 pub struct PetriClientPlugin;
 
+#[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PetriState {
+    #[default]
+    Login,
+    Scene,
+}
+
+#[derive(Resource, Debug)]
+pub struct CurrentUserLogin(String);
+
 impl Plugin for PetriClientPlugin {
     fn build(&self, app: &mut App) {
+        app.add_state::<PetriState>()
+            .insert_resource(CurrentUserLogin(String::new()))
+            .add_systems(OnEnter(PetriState::Login), login_screen)
+            .add_systems(Update, login_input.run_if(in_state(PetriState::Login)))
+            .add_systems(
+                OnExit(PetriState::Login),
+                |mut cmd: Commands, login: Query<Entity, With<LoginUIMarker>>| {
+                    login.for_each(|l| cmd.entity(l).despawn_recursive())
+                },
+            )
+            .add_systems(
+                OnEnter(PetriState::Scene),
+                (setup_scene, setup_connection.map(Result::unwrap)),
+            )
+            .add_systems(
+                Update,
+                (
+                    add_mesh_to_players,
+                    move_player_from_network,
+                    log_players,
+                    send_name.run_if(client_just_connected()),
+                )
+                    .run_if(in_state(PetriState::Scene)),
+            )
+            .add_systems(OnExit(PetriState::Scene), || todo!("Clean up world"));
+
+        #[derive(Debug, Component)]
+        struct LoginInput;
+
+        #[derive(Debug, Component)]
+        struct LoginUIMarker;
+
+        fn login_screen(mut cmd: Commands, asset_server: Res<AssetServer>) {
+            cmd.spawn((Camera2dBundle::default(), LoginUIMarker));
+            let root = cmd
+                .spawn((
+                    NodeBundle {
+                        style: Style {
+                            width: Val::Percent(100.0),
+                            height: Val::Percent(100.0),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            flex_direction: FlexDirection::Column,
+                            ..default()
+                        },
+                        background_color: BackgroundColor(Color::DARK_GRAY),
+                        ..default()
+                    },
+                    LoginUIMarker,
+                ))
+                .id();
+
+            let prompt = cmd
+                .spawn(
+                    // Create a TextBundle that has a Text with a single section.
+                    TextBundle::from_section(
+                        // Accepts a `String` or any type that converts into a `String`, such as `&str`
+                        "Login",
+                        TextStyle {
+                            // This font is loaded and will be used instead of the default font.
+                            font: asset_server.load("open-sans.ttf"),
+                            font_size: 100.0,
+                            ..default()
+                        },
+                    ) // Set the alignment of the Text
+                    .with_text_alignment(TextAlignment::Center), // Set the style of the TextBundle itself.
+                )
+                .id();
+
+            let login_container = cmd
+                .spawn((
+                    NodeBundle {
+                        background_color: BackgroundColor(Color::DARK_GREEN),
+                        ..default()
+                    },
+                    Outline {
+                        width: Val::Px(6.),
+                        offset: Val::Px(6.),
+                        color: Color::LIME_GREEN,
+                    },
+                ))
+                .id();
+
+            let input = cmd
+                .spawn((
+                    // Create a TextBundle that has a Text with a single section.
+                    TextBundle::from_section(
+                        // Accepts a `String` or any type that converts into a `String`, such as `&str`
+                        "_",
+                        TextStyle {
+                            // This font is loaded and will be used instead of the default font.
+                            font: asset_server.load("open-sans.ttf"),
+                            font_size: 100.0,
+                            ..default()
+                        },
+                    ) // Set the alignment of the Text
+                    .with_text_alignment(TextAlignment::Center), // Set the style of the TextBundle itself.
+                    LoginInput,
+                ))
+                .id();
+
+            cmd.entity(login_container).add_child(input);
+            cmd.entity(root)
+                .add_child(prompt)
+                .add_child(login_container);
+        }
+
+        fn login_input(
+            mut char_input_events: EventReader<ReceivedCharacter>,
+            mut keyboard_input_events: EventReader<KeyboardInput>,
+            mut login_label: Query<&mut Text, With<LoginInput>>,
+            mut login: ResMut<CurrentUserLogin>,
+            mut next_state: ResMut<NextState<PetriState>>,
+        ) {
+            for event in keyboard_input_events.read() {
+                match event.key_code {
+                    Some(KeyCode::Return) => {
+                        if !login.0.trim().is_empty() {
+                            next_state.set(PetriState::Scene);
+                            return;
+                        }
+                    }
+                    Some(KeyCode::Back) => {
+                        login.0.pop();
+                    }
+                    _ => {}
+                }
+            }
+            for event in char_input_events.read() {
+                login.0.push(event.char);
+            }
+            login_label.for_each_mut(|mut l| {
+                l.sections[0].value = format!("{}_", login.0);
+            })
+        }
+
         #[derive(Component)]
         struct PlayerHydrated;
 
@@ -87,7 +234,7 @@ impl Plugin for PetriClientPlugin {
             let client = RenetClient::new(ConnectionConfig {
                 server_channels_config,
                 client_channels_config,
-                ..Default::default()
+                ..default()
             });
 
             let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
@@ -107,7 +254,18 @@ impl Plugin for PetriClientPlugin {
             Ok(())
         }
 
-        app.add_systems(Startup, (setup_scene, setup_connection.map(Result::unwrap)))
-            .add_systems(Update, (add_mesh_to_players, move_player_from_network));
+        fn send_name(mut set_name: EventWriter<SetName>, login: Res<CurrentUserLogin>) {
+            set_name.send(SetName(login.0.clone()));
+        }
+
+        fn log_players(time: Res<Time>, mut timer: Local<Timer>, players: Query<&PlayerName>) {
+            if timer.tick(time.delta()).just_finished() {
+                timer.set_duration(Duration::from_secs(1));
+                timer.reset();
+                for player in &players {
+                    info!("{player:?}")
+                }
+            }
+        }
     }
 }

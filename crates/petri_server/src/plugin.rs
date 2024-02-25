@@ -1,12 +1,12 @@
 use bevy::prelude::*;
 use bevy_replicon::{
-    prelude::{NetworkChannels, RenetServer, Replication},
+    prelude::{FromClient, NetworkChannels, RenetServer, Replication},
     renet::{
         transport::{NetcodeServerTransport, ServerAuthentication, ServerConfig},
         ConnectionConfig, ServerEvent,
     },
 };
-use petri_shared::{Player, PlayerColor, PlayerPos};
+use petri_shared::{Player, PlayerColor, PlayerName, PlayerPos, SetName};
 use std::{
     net::{Ipv4Addr, SocketAddr, UdpSocket},
     time::SystemTime,
@@ -16,6 +16,27 @@ pub struct PetriServerPlugin;
 
 impl Plugin for PetriServerPlugin {
     fn build(&self, app: &mut App) {
+        app.add_systems(Update, (server_event_system, receive_names))
+            .add_systems(Startup, setup_server.map(Result::unwrap));
+
+        fn receive_names(
+            mut events: EventReader<FromClient<SetName>>,
+            mut clients: Query<(Entity, &Player), Without<PlayerName>>,
+            mut commands: Commands,
+        ) {
+            // FIXME: get entity by client id
+            for event in events.read() {
+                info!("Received name from {:?} {:?}", event.client_id, event.event);
+                for (entity, Player(client_id)) in clients.iter_mut() {
+                    if client_id == &event.client_id {
+                        commands
+                            .entity(entity)
+                            .insert(PlayerName(event.event.0.clone()));
+                    }
+                }
+            }
+        }
+
         /// Logs server events and spawns a new player whenever a client connects.
         fn server_event_system(
             mut commands: Commands,
@@ -84,8 +105,5 @@ impl Plugin for PetriServerPlugin {
             commands.insert_resource(transport);
             Ok(())
         }
-
-        app.add_systems(Update, server_event_system)
-            .add_systems(Startup, setup_server.map(Result::unwrap));
     }
 }

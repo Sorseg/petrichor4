@@ -15,6 +15,12 @@ pub struct PlayerPos(pub Vec3);
 #[derive(Component, Serialize, Deserialize)]
 pub struct PlayerColor(pub Color);
 
+#[derive(Component, Debug, Serialize, Deserialize)]
+pub struct PlayerName(pub String);
+
+#[derive(Event, Debug, Serialize, Deserialize)]
+pub struct SetName(pub String);
+
 pub struct PetriSharedSetup;
 
 impl Plugin for PetriSharedSetup {
@@ -22,6 +28,8 @@ impl Plugin for PetriSharedSetup {
         app.replicate::<Player>()
             .replicate::<PlayerColor>()
             .replicate::<PlayerPos>()
-            .add_client_event::<MoveDirection>(EventType::Ordered);
+            .replicate::<PlayerName>()
+            .add_client_event::<MoveDirection>(EventType::Ordered)
+            .add_client_event::<SetName>(EventType::Ordered);
     }
 }
