@@ -53,7 +53,6 @@ impl Plugin for PetriClientPlugin {
                     send_name.run_if(client_just_connected),
                     add_mesh_to_players,
                     move_player_from_network,
-                    log_players.run_if(on_timer(Duration::from_secs(1))),
                     hud_update_player_names,
                     send_movement,
                 )
@@ -268,12 +267,6 @@ impl Plugin for PetriClientPlugin {
 
         fn send_name(mut set_name: EventWriter<SetName>, login: Res<CurrentUserLogin>) {
             set_name.send(SetName(login.0.clone()));
-        }
-
-        fn log_players(players: Query<(&PlayerName, &GlobalTransform)>) {
-            for (name, transf) in &players {
-                info!("{name:?} {transf:?}")
-            }
         }
 
         #[derive(Component)]
