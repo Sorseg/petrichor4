@@ -8,7 +8,7 @@ use bevy_replicon::{
         ConnectionConfig, ServerEvent,
     },
 };
-use petri_shared::{MoveDirection, Player, PlayerColor, PlayerName, PlayerPos, SetName};
+use petri_shared::{get_player_capsule_size, MoveDirection, Player, PlayerColor, PlayerName, PlayerPos, SetName};
 use rand::random;
 use std::{
     net::{Ipv4Addr, SocketAddr, UdpSocket},
@@ -67,6 +67,9 @@ impl Plugin for PetriServerPlugin {
                         let r = ((client_id.raw() % 23) as f32) / 23.0;
                         let g = ((client_id.raw() % 27) as f32) / 27.0;
                         let b = ((client_id.raw() % 39) as f32) / 39.0;
+
+                        let (capsule_diameter, capsule_segment_half_height) = get_player_capsule_size();
+
                         commands.spawn((
                             Player(*client_id),
                             TransformBundle::from_transform(Transform::from_xyz(
@@ -78,8 +81,13 @@ impl Plugin for PetriServerPlugin {
                             ExternalImpulse::default(),
                             PlayerColor(Color::rgb(r, g, b)),
                             Replication,
-                            Collider::cuboid(0.5, 0.5, 0.5),
+                            Collider::capsule_y(
+                                capsule_segment_half_height,
+                                capsule_diameter / 2.0,
+                            ),
+                            ReadMassProperties::default(),
                             RigidBody::Dynamic,
+                            LockedAxes::ROTATION_LOCKED,
                         ));
                     }
                     ServerEvent::ClientDisconnected { client_id, reason } => {
@@ -136,30 +144,42 @@ impl Plugin for PetriServerPlugin {
 
 fn setup_physics(mut commands: Commands) {
     //floor
-    commands.spawn(Collider::cuboid(1000.0, 0.1, 1000.0));
+    commands.spawn((
+        Collider::cuboid(1000.0, 0.1, 1000.0),
+        Restitution {
+            coefficient: 0.0,
+            ..default()
+        },
+        Friction {
+            coefficient: 10.0,
+            ..default()
+        },
+    ));
 }
 
 fn move_clients(
     mut events: EventReader<FromClient<MoveDirection>>,
-    mut player: Query<(&Player, &mut ExternalImpulse)>,
+    mut player: Query<(&Player, &mut ExternalImpulse, &ReadMassProperties)>,
 ) {
     // FIXME: make this a map of client_id to entity and update it once per [Update]
     let mut player_to_ext_force: HashMap<_, _> = player
         .iter_mut()
-        .map(|(Player(client_id), force)| (client_id, force))
+        .map(|(Player(client_id), force, props)| (client_id, (force, props)))
         .collect();
 
     for event in events.read() {
         info!("Received move event");
-        const KONSTANTA: f32 = 0.1;
-        if let Some(force) = player_to_ext_force.get_mut(&event.client_id) {
+        const KONSTANTA: f32 = 0.2;
+
+        if let Some((force, props)) = player_to_ext_force.get_mut(&event.client_id) {
+            info!("{}", props.mass);
             let normalized = event.event.0.normalize_or_zero();
             force.impulse = Vec3 {
                 x: normalized.x,
                 y: 0.0,
                 // N.B.
                 z: normalized.y,
-            } * KONSTANTA;
+            } * KONSTANTA * props.mass;
         } else {
             info!("POLTERGEIST IS MOVING");
         }

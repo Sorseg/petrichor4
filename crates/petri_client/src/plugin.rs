@@ -10,7 +10,7 @@ use bevy_replicon::{
         ConnectionConfig,
     },
 };
-use petri_shared::{MoveDirection, Player, PlayerColor, PlayerName, PlayerPos, SetName};
+use petri_shared::{get_player_capsule_size, MoveDirection, Player, PlayerColor, PlayerName, PlayerPos, SetName};
 use std::{
     net::{Ipv4Addr, SocketAddr, UdpSocket},
     time::{Duration, SystemTime},
@@ -180,10 +180,11 @@ impl Plugin for PetriClientPlugin {
         ) {
             for (entity, player, player_color) in players_without_mesh.iter() {
                 info!("Adding mesh to {player:?}");
+                let (capsule_diameter, capsule_segment_half_height) = get_player_capsule_size();
                 commands
                     .entity(entity)
                     .insert(PbrBundle {
-                        mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
+                        mesh: meshes.add(Capsule3d::new(capsule_diameter / 2.0, capsule_segment_half_height * 2.0)),
                         material: materials.add(player_color.0),
                         transform: Transform::from_xyz(0.0, 0.5, 0.0),
                         ..default()
