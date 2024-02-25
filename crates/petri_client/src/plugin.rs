@@ -12,6 +12,7 @@ use std::{
     net::{Ipv4Addr, SocketAddr, UdpSocket},
     time::{Duration, SystemTime},
 };
+use bevy::time::common_conditions::on_timer;
 
 pub struct PetriClientPlugin;
 
@@ -48,7 +49,7 @@ impl Plugin for PetriClientPlugin {
                     send_name.run_if(client_just_connected),
                     add_mesh_to_players,
                     move_player_from_network,
-                    log_players,
+                    log_players.run_if(on_timer(Duration::from_secs(1))),
                     hud_update_player_names,
                 )
                     .run_if(in_state(PetriState::Scene)),
@@ -260,14 +261,10 @@ impl Plugin for PetriClientPlugin {
             set_name.send(SetName(login.0.clone()));
         }
 
-        fn log_players(time: Res<Time>, mut timer: Local<Timer>, players: Query<&PlayerName>) {
-            if timer.tick(time.delta()).just_finished() {
-                timer.set_duration(Duration::from_secs(1));
-                timer.reset();
-                for player in &players {
-                    info!("{player:?}")
+        fn log_players(players: Query<(&PlayerName, &GlobalTransform)>) {
+                for (name, transf) in &players {
+                    info!("{name:?} {transf:?}")
                 }
-            }
         }
 
         #[derive(Component)]
