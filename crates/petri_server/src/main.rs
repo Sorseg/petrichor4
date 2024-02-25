@@ -1,5 +1,4 @@
-use bevy::log::LogPlugin;
-use bevy::prelude::*;
+use bevy::{log::LogPlugin, prelude::*};
 use bevy_replicon::{
     prelude::*,
     renet::{
@@ -29,12 +28,19 @@ fn main() {
         ))
         .add_systems(Update, server_event_system)
         .add_systems(Startup, setup_server.map(Result::unwrap))
+        .replicate::<Player>()
+        .replicate::<PlayerColor>()
+        .replicate::<PlayerPos>()
         .add_client_event::<MoveDirection>(EventType::Ordered)
         .run();
 }
 
 /// Logs server events and spawns a new player whenever a client connects.
-fn server_event_system(mut commands: Commands, mut server_event: EventReader<ServerEvent>) {
+fn server_event_system(
+    mut commands: Commands,
+    mut server_event: EventReader<ServerEvent>,
+    clients: Query<(Entity, &Player)>,
+) {
     for event in server_event.read() {
         match event {
             ServerEvent::ClientConnected { client_id } => {
@@ -52,7 +58,11 @@ fn server_event_system(mut commands: Commands, mut server_event: EventReader<Ser
             }
             ServerEvent::ClientDisconnected { client_id, reason } => {
                 info!("client {client_id} disconnected: {reason}");
-                // TODO: despawn
+                for (e, p) in clients.iter() {
+                    if &p.0 == client_id {
+                        commands.entity(e).despawn_recursive();
+                    }
+                }
             }
         }
     }

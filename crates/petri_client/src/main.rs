@@ -1,17 +1,29 @@
 //! A simple 3D scene with light shining over a cube sitting on a plane.
 
 use bevy::prelude::*;
-use bevy_replicon::prelude::NetworkChannels;
-use bevy_replicon::renet::transport::{ClientAuthentication, NetcodeClientTransport};
-use bevy_replicon::renet::{ConnectionConfig, RenetClient};
-use std::net::{Ipv4Addr, SocketAddr, UdpSocket};
-use std::time::SystemTime;
-use bevy_replicon::ReplicationPlugins;
+use bevy_replicon::{
+    prelude::NetworkChannels,
+    renet::{
+        transport::{ClientAuthentication, NetcodeClientTransport},
+        ConnectionConfig, RenetClient,
+    },
+    ReplicationPlugins,
+};
+use petri_shared::{Player, PlayerColor, PlayerPos};
+use std::{
+    net::{Ipv4Addr, SocketAddr, UdpSocket},
+    time::{Duration, SystemTime},
+};
+use bevy_replicon::prelude::AppReplicationExt;
 
 fn main() {
     App::new()
         .add_plugins((DefaultPlugins, ReplicationPlugins))
+        .replicate::<Player>()
+        .replicate::<PlayerColor>()
+        .replicate::<PlayerPos>()
         .add_systems(Startup, (setup, setup_connection.map(Result::unwrap)))
+        .add_systems(Update, log_players)
         .run();
 }
 
@@ -45,7 +57,10 @@ fn setup(
     });
 }
 
-fn setup_connection(mut commands: Commands, network_channels: Res<NetworkChannels>) -> anyhow::Result<()> {
+fn setup_connection(
+    mut commands: Commands,
+    network_channels: Res<NetworkChannels>,
+) -> anyhow::Result<()> {
     let server_channels_config = network_channels.get_server_configs();
     let client_channels_config = network_channels.get_client_configs();
 
@@ -70,4 +85,14 @@ fn setup_connection(mut commands: Commands, network_channels: Res<NetworkChannel
     commands.insert_resource(client);
     commands.insert_resource(transport);
     Ok(())
+}
+
+fn log_players(time: Res<Time>, mut timer: Local<Timer>, clients: Query<&Player>) {
+    if timer.tick(time.delta()).finished() {
+        timer.set_duration(Duration::from_secs_f32(1.0));
+        timer.reset();
+        for c in clients.iter() {
+            info!("Client {}", c.0);
+        }
+    }
 }

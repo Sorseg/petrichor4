@@ -9,3 +9,4 @@ edition = "2021"
 bevy = {workspace = true}
 bevy_replicon = {workspace = true}
 anyhow = {workspace = true}
+petri_shared = {path="../petri_shared"}
