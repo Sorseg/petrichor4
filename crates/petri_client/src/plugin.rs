@@ -1,5 +1,4 @@
-use bevy::ecs::query::QueryEntityError;
-use bevy::{input::keyboard::KeyboardInput, prelude::*};
+use bevy::{ecs::query::QueryEntityError, input::keyboard::KeyboardInput, prelude::*};
 use bevy_replicon::{
     client_just_connected,
     prelude::{NetworkChannels, RenetClient},
@@ -16,9 +15,8 @@ use std::{
 
 pub struct PetriClientPlugin;
 
-#[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(States, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PetriState {
-    #[default]
     Login,
     Scene,
 }
@@ -28,14 +26,16 @@ pub struct CurrentUserLogin(String);
 
 impl Plugin for PetriClientPlugin {
     fn build(&self, app: &mut App) {
-        app.add_state::<PetriState>()
+        app.insert_state(PetriState::Login)
             .insert_resource(CurrentUserLogin(String::new()))
             .add_systems(OnEnter(PetriState::Login), login_screen)
             .add_systems(Update, login_input.run_if(in_state(PetriState::Login)))
             .add_systems(
                 OnExit(PetriState::Login),
                 |mut cmd: Commands, login_entity: Query<Entity, With<LoginUIMarker>>| {
-                    login_entity.for_each(|l| cmd.entity(l).despawn_recursive())
+                    login_entity
+                        .iter()
+                        .for_each(|l| cmd.entity(l).despawn_recursive())
                 },
             )
             .add_systems(
@@ -45,7 +45,7 @@ impl Plugin for PetriClientPlugin {
             .add_systems(
                 Update,
                 (
-                    send_name.run_if(client_just_connected()),
+                    send_name.run_if(client_just_connected),
                     add_mesh_to_players,
                     move_player_from_network,
                     log_players,
@@ -94,7 +94,7 @@ impl Plugin for PetriClientPlugin {
                             ..default()
                         },
                     ) // Set the alignment of the Text
-                    .with_text_alignment(TextAlignment::Center), // Set the style of the TextBundle itself.
+                    .with_text_justify(JustifyText::Center),
                 )
                 .id();
 
@@ -125,7 +125,7 @@ impl Plugin for PetriClientPlugin {
                             ..default()
                         },
                     ) // Set the alignment of the Text
-                    .with_text_alignment(TextAlignment::Center), // Set the style of the TextBundle itself.
+                    .with_text_justify(JustifyText::Center),
                     LoginInput,
                 ))
                 .id();
@@ -145,22 +145,22 @@ impl Plugin for PetriClientPlugin {
         ) {
             for event in keyboard_input_events.read() {
                 match event.key_code {
-                    Some(KeyCode::Return) => {
+                    KeyCode::Enter => {
                         if !login.0.trim().is_empty() {
                             next_state.set(PetriState::Scene);
                             return;
                         }
                     }
-                    Some(KeyCode::Back) => {
+                    KeyCode::Backspace => {
                         login.0.pop();
                     }
                     _ => {}
                 }
             }
             for event in char_input_events.read() {
-                login.0.push(event.char);
+                login.0.push_str(event.char.as_str());
             }
-            login_label.for_each_mut(|mut l| {
+            login_label.iter_mut().for_each(|mut l| {
                 l.sections[0].value = format!("{}_", login.0);
             })
         }
@@ -179,8 +179,8 @@ impl Plugin for PetriClientPlugin {
                 commands
                     .entity(entity)
                     .insert(PbrBundle {
-                        mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-                        material: materials.add(player_color.0.into()),
+                        mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
+                        material: materials.add(player_color.0),
                         transform: Transform::from_xyz(0.0, 0.5, 0.0),
                         ..default()
                     })
@@ -202,8 +202,8 @@ impl Plugin for PetriClientPlugin {
         ) {
             // circular base
             commands.spawn(PbrBundle {
-                mesh: meshes.add(shape::Circle::new(4.0).into()),
-                material: materials.add(Color::WHITE.into()),
+                mesh: meshes.add(Circle::new(4.0)),
+                material: materials.add(Color::WHITE),
                 transform: Transform::from_rotation(Quat::from_rotation_x(
                     -std::f32::consts::FRAC_PI_2,
                 )),
@@ -280,39 +280,42 @@ impl Plugin for PetriClientPlugin {
             mut labels: Query<&mut PlayerNameLabel>,
             mut styles: Query<&mut Style>,
             asset_server: Res<AssetServer>,
-            camera: Query<(&Camera, &GlobalTransform)>
+            camera: Query<(&Camera, &GlobalTransform)>,
         ) {
             let (camera, camera_transform) = camera.single();
             for (player_entity, name, player_transform) in &players {
                 // FIXME: update and create in a single step
                 match labels.get_mut(player_entity) {
                     Ok((label)) => {
-                        let pos = camera.world_to_viewport(camera_transform, player_transform.translation());
+                        let pos = camera
+                            .world_to_viewport(camera_transform, player_transform.translation());
                         if let Some(p) = pos {
                             let mut style = styles.get_mut(label.0).unwrap();
                             style.left = Val::Px(p.x);
                             style.top = Val::Px(p.y);
                         }
-                    },
+                    }
                     Err(QueryEntityError::QueryDoesNotMatch(..)) => {
                         info!("Creating label for {name:?}");
-                        let node = commands.spawn(TextBundle {
-                            text: Text::from_section(
-                                &name.0,
-                                TextStyle {
-                                    font: asset_server.load("open-sans.ttf"),
-                                    font_size: 10.0,
-                                    color: Color::WHITE,
+                        let node = commands
+                            .spawn(TextBundle {
+                                text: Text::from_section(
+                                    &name.0,
+                                    TextStyle {
+                                        font: asset_server.load("open-sans.ttf"),
+                                        font_size: 10.0,
+                                        color: Color::WHITE,
+                                    },
+                                ),
+                                style: Style {
+                                    position_type: PositionType::Absolute,
+                                    left: Val::Px(10.0),
+                                    bottom: Val::Px(10.0),
+                                    ..default()
                                 },
-                            ),
-                            style: Style {
-                                position_type: PositionType::Absolute,
-                                left: Val::Px(10.0),
-                                bottom: Val::Px(10.0),
                                 ..default()
-                            },
-                            ..default()
-                        }).id();
+                            })
+                            .id();
                         commands.entity(player_entity).insert(PlayerNameLabel(node));
                     }
                     Err(e) => panic!("{e:?}"),
@@ -320,8 +323,6 @@ impl Plugin for PetriClientPlugin {
             }
         }
 
-        fn cleanup_despawned_name_plaques() {
-
-        }
+        fn cleanup_despawned_name_plaques() {}
     }
 }
