@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Component, Serialize, Deserialize)]
 pub struct Player(pub ClientId);
 
-/// A movement event for the controlled box.
+/// An intention to move in a particular direction.
 #[derive(Event, Debug, Default, Deserialize, Serialize)]
 pub struct MoveDirection(pub Vec2);
 

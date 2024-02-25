@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::utils::HashMap;
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::{
     prelude::*,
@@ -7,7 +8,7 @@ use bevy_replicon::{
         ConnectionConfig, ServerEvent,
     },
 };
-use petri_shared::{Player, PlayerColor, PlayerName, PlayerPos, SetName};
+use petri_shared::{MoveDirection, Player, PlayerColor, PlayerName, PlayerPos, SetName};
 use rand::random;
 use std::{
     net::{Ipv4Addr, SocketAddr, UdpSocket},
@@ -22,7 +23,14 @@ impl Plugin for PetriServerPlugin {
             Startup,
             (setup_physics, setup_server_networking.map(Result::unwrap)),
         )
-        .add_systems(Update, (server_event_system, receive_names))
+        .add_systems(
+            Update,
+            (
+                server_event_system,
+                receive_names,
+                move_clients.after(ServerSet::Receive),
+            ),
+        )
         // FIXME(opt): make sure `Update` schedule is running the same frequency as the server sends event
         .add_systems(Update, update_player_pos.before(ServerSet::Send))
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default());
@@ -67,6 +75,7 @@ impl Plugin for PetriServerPlugin {
                                 random::<f32>() * 3.0 + 1.5,
                             )),
                             PlayerPos(default()),
+                            ExternalImpulse::default(),
                             PlayerColor(Color::rgb(r, g, b)),
                             Replication,
                             Collider::cuboid(0.5, 0.5, 0.5),
@@ -128,4 +137,31 @@ impl Plugin for PetriServerPlugin {
 fn setup_physics(mut commands: Commands) {
     //floor
     commands.spawn(Collider::cuboid(1000.0, 0.1, 1000.0));
+}
+
+fn move_clients(
+    mut events: EventReader<FromClient<MoveDirection>>,
+    mut player: Query<(&Player, &mut ExternalImpulse)>,
+) {
+    // FIXME: make this a map of client_id to entity and update it once per [Update]
+    let mut player_to_ext_force: HashMap<_, _> = player
+        .iter_mut()
+        .map(|(Player(client_id), force)| (client_id, force))
+        .collect();
+
+    for event in events.read() {
+        info!("Received move event");
+        const KONSTANTA: f32 = 0.1;
+        if let Some(force) = player_to_ext_force.get_mut(&event.client_id) {
+            let normalized = event.event.0.normalize_or_zero();
+            force.impulse = Vec3 {
+                x: normalized.x,
+                y: 0.0,
+                // N.B.
+                z: normalized.y,
+            } * KONSTANTA;
+        } else {
+            info!("POLTERGEIST IS MOVING");
+        }
+    }
 }

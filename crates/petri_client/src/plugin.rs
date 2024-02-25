@@ -1,4 +1,7 @@
-use bevy::{ecs::query::QueryEntityError, input::keyboard::KeyboardInput, prelude::*};
+use bevy::{
+    ecs::query::QueryEntityError, input::keyboard::KeyboardInput, prelude::*,
+    time::common_conditions::on_timer,
+};
 use bevy_replicon::{
     client_just_connected,
     prelude::{NetworkChannels, RenetClient},
@@ -7,12 +10,11 @@ use bevy_replicon::{
         ConnectionConfig,
     },
 };
-use petri_shared::{Player, PlayerColor, PlayerName, PlayerPos, SetName};
+use petri_shared::{MoveDirection, Player, PlayerColor, PlayerName, PlayerPos, SetName};
 use std::{
     net::{Ipv4Addr, SocketAddr, UdpSocket},
     time::{Duration, SystemTime},
 };
-use bevy::time::common_conditions::on_timer;
 
 pub struct PetriClientPlugin;
 
@@ -51,6 +53,7 @@ impl Plugin for PetriClientPlugin {
                     move_player_from_network,
                     log_players.run_if(on_timer(Duration::from_secs(1))),
                     hud_update_player_names,
+                    send_movement,
                 )
                     .run_if(in_state(PetriState::Scene)),
             )
@@ -262,9 +265,9 @@ impl Plugin for PetriClientPlugin {
         }
 
         fn log_players(players: Query<(&PlayerName, &GlobalTransform)>) {
-                for (name, transf) in &players {
-                    info!("{name:?} {transf:?}")
-                }
+            for (name, transf) in &players {
+                info!("{name:?} {transf:?}")
+            }
         }
 
         #[derive(Component)]
@@ -321,5 +324,25 @@ impl Plugin for PetriClientPlugin {
         }
 
         fn cleanup_despawned_name_plaques() {}
+    }
+}
+
+fn send_movement(mut writer: EventWriter<MoveDirection>, input: Res<ButtonInput<KeyCode>>) {
+    let mut direction = Vec2::default();
+    static KEYBINDINGS: &[(KeyCode, Vec2)] = &[
+        (KeyCode::KeyA, Vec2::new(-1.0, 0.0)),
+        (KeyCode::KeyD, Vec2::new(1.0, 0.0)),
+        (KeyCode::KeyW, Vec2::new(0.0, 1.0)),
+        (KeyCode::KeyS, Vec2::new(0.0, -1.0)),
+    ];
+
+    for (key, dir) in KEYBINDINGS {
+        if input.pressed(*key) {
+            direction += *dir;
+        }
+    }
+
+    if direction.length() != 0.0 {
+        writer.send(MoveDirection(direction));
     }
 }
