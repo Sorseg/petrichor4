@@ -290,8 +290,15 @@ impl Plugin for PetriClientPlugin {
 
             let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
             let client_id = current_time.as_millis() as u64;
-            let server_addr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 8989);
-            let socket = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0))?;
+
+            let addr = std::env::args()
+                .nth(1)
+                .map(|v| dns_lookup::lookup_host(&v).unwrap()[0])
+                .unwrap_or(Ipv4Addr::LOCALHOST.into());
+            let server_addr = SocketAddr::new(addr, 8989);
+            info!("Connecting to {server_addr:?}...");
+
+            let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0))?;
             let authentication = ClientAuthentication::Unsecure {
                 client_id,
                 protocol_id: 0,
@@ -390,7 +397,8 @@ fn send_movement(
     let forward = pos.forward();
 
     let mut direction = Vec2::default();
-    // FIXME: figure out the correct directions
+    // +Y is right
+    // +X is forward
     static KEYBINDINGS: &[(KeyCode, Vec2)] = &[
         (KeyCode::KeyA, Vec2::new(0.0, -1.0)),
         (KeyCode::KeyD, Vec2::new(0.0, 1.0)),

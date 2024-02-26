@@ -1,0 +1,19 @@
+# fly.toml app configuration file generated for petrichor4 on 2024-02-26T19:51:18+02:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'petrichor4'
+primary_region = 'arn'
+
+[[services]]
+internal_port = 8989
+protocol = "udp"
+
+[[services.ports]]
+port = "8989"
+
+[[vm]]
+memory = '256Mb'
+cpu_kind = 'shared'
+cpus = 1

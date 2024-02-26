@@ -15,6 +15,7 @@ bevy = { version = "0.13", features=["serialize"] }
 bevy_replicon = "0.23.0"
 serde = "1"
 anyhow = "1"
+dns-lookup = "2.0.4"
 
 [profile.release]
 # for profiling
