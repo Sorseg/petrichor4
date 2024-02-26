@@ -219,11 +219,9 @@ fn move_clients(
         .collect();
 
     for event in events.read() {
-        info!("Received move event");
         const KONSTANTA: f32 = 0.1;
 
         if let Some((force, props)) = player_to_ext_force.get_mut(&event.client_id) {
-            info!("{}", props.mass);
             let normalized = event.event.0.normalize_or_zero();
             force.impulse = Vec3 {
                 x: normalized.x,
