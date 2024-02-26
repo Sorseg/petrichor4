@@ -10,3 +10,4 @@ bevy = {workspace = true, features=["jpeg"]}
 bevy_replicon = {workspace = true}
 anyhow = {workspace = true}
 petri_shared = {path="../petri_shared"}
+dns-lookup = {workspace = true}

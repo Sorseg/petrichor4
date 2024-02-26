@@ -278,7 +278,6 @@ impl Plugin for PetriClientPlugin {
             mut commands: Commands,
             network_channels: Res<NetworkChannels>,
         ) -> anyhow::Result<()> {
-            info!("Connecting...");
             let server_channels_config = network_channels.get_server_configs();
             let client_channels_config = network_channels.get_client_configs();
 

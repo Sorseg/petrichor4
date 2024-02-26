@@ -3121,6 +3121,7 @@ dependencies = [
  "anyhow",
  "bevy",
  "bevy_replicon",
+ "dns-lookup",
  "petri_shared",
 ]
 
