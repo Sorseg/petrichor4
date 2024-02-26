@@ -15,7 +15,7 @@ use petri_shared::{
 use rand::random;
 use std::{
     io::Cursor,
-    net::{Ipv4Addr, SocketAddr, UdpSocket},
+    net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket},
     time::SystemTime,
 };
 
@@ -133,16 +133,29 @@ impl Plugin for PetriServerPlugin {
             });
 
             let port = 8989;
+            let hosted_on_fly = std::env::args().any(|a| a == "--flyio");
+
             let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
-            let public_addr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), port);
-            info!("Starting server on {public_addr:?}");
-            let socket = UdpSocket::bind(public_addr)?;
+            // fly.io requires UDP apps to bind to a specific address
+            // https://fly.io/docs/networking/udp-and-tcp/
+            let ip = if hosted_on_fly {
+                dns_lookup::lookup_host("fly-global-services")
+                    .unwrap()
+                    .into_iter()
+                    .find(IpAddr::is_ipv4)
+                    .unwrap()
+            } else {
+                Ipv4Addr::LOCALHOST.into()
+            };
+            let socket_address = SocketAddr::new(ip, port);
+            info!("Starting server on {socket_address:?}");
+            let socket = UdpSocket::bind(socket_address)?;
             let server_config = ServerConfig {
                 current_time,
                 max_clients: 10,
                 protocol_id: 0,
                 authentication: ServerAuthentication::Unsecure,
-                public_addresses: vec![public_addr],
+                public_addresses: vec![socket_address],
             };
             let transport = NetcodeServerTransport::new(server_config, socket)?;
 
