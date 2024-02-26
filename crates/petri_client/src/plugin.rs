@@ -1,5 +1,9 @@
 use bevy::{
-    core_pipeline::Skybox, ecs::query::QueryEntityError, input::keyboard::KeyboardInput, prelude::*,
+    core_pipeline::Skybox,
+    ecs::query::QueryEntityError,
+    input::{keyboard::KeyboardInput, mouse::MouseMotion},
+    prelude::*,
+    window::CursorGrabMode,
 };
 use bevy_replicon::{
     client_just_connected,
@@ -25,9 +29,6 @@ pub enum PetriState {
     Scene,
 }
 
-#[derive(Resource, Debug)]
-pub struct CurrentUserLogin(String);
-
 impl Plugin for PetriClientPlugin {
     fn build(&self, app: &mut App) {
         app.insert_state(PetriState::Login)
@@ -49,11 +50,12 @@ impl Plugin for PetriClientPlugin {
             .add_systems(
                 Update,
                 (
+                    grab_mouse,
                     send_name.run_if(client_just_connected),
-                    add_mesh_to_players,
+                    (aim, hud_update_player_names, send_movement)
+                        .run_if(any_with_component::<Eyes>),
+                    hydrate_players,
                     move_player_from_network,
-                    hud_update_player_names,
-                    send_movement,
                 )
                     .run_if(in_state(PetriState::Scene)),
             )
@@ -169,18 +171,52 @@ impl Plugin for PetriClientPlugin {
             })
         }
 
-        fn add_mesh_to_players(
+        fn hydrate_players(
             mut commands: Commands,
             mut meshes: ResMut<Assets<Mesh>>,
             mut materials: ResMut<Assets<StandardMaterial>>,
             players_without_mesh: Query<(Entity, &Player, &PlayerColor), Added<Player>>,
+            my_player_id: Res<MyPlayerId>,
+            asset_server: Res<AssetServer>,
         ) {
             for (entity, player, player_color) in players_without_mesh.iter() {
                 info!("Adding mesh to {player:?}");
                 let (capsule_diameter, capsule_segment_half_height) = get_player_capsule_size();
-                commands
-                    .entity(entity)
-                    .insert(PbrBundle {
+                let mut entity = commands.entity(entity);
+                if player.0.raw() == my_player_id.0 {
+                    entity.insert((Me, TransformBundle::default()));
+                    let height = 1.0;
+                    entity.with_children(|parent| {
+                        parent.spawn(
+                            // camera
+                            (
+                                Eyes,
+                                Camera3dBundle {
+                                    transform: Transform::from_xyz(0.0, height, 0.0).looking_at(
+                                        // TODO: replace with zero, will be rewritten by the aiming system anyway
+                                        Vec3 {
+                                            x: 0.0,
+                                            y: height,
+                                            z: 10.0,
+                                        },
+                                        Vec3::Y,
+                                    ),
+                                    ..default()
+                                },
+                                Skybox {
+                                    image: asset_server.load("specular.ktx2"),
+                                    brightness: 150.0,
+                                },
+                                EnvironmentMapLight {
+                                    specular_map: asset_server.load("specular.ktx2"),
+                                    diffuse_map: asset_server.load("diffuse.ktx2"),
+                                    intensity: 150.0,
+                                },
+                            ),
+                        );
+                    });
+                } else {
+                    entity.insert(PbrBundle {
                         mesh: meshes.add(Capsule3d::new(
                             capsule_diameter / 2.0,
                             capsule_segment_half_height * 2.0,
@@ -189,6 +225,7 @@ impl Plugin for PetriClientPlugin {
                         transform: Transform::from_xyz(0.0, 0.5, 0.0),
                         ..default()
                     });
+                }
             }
         }
 
@@ -198,12 +235,29 @@ impl Plugin for PetriClientPlugin {
             }
         }
 
+        fn aim(
+            mut mouse_motion_events: EventReader<MouseMotion>,
+            mut eyes: Query<&mut Transform, With<Eyes>>,
+            mut windows: Query<&mut Window>,
+        ) {
+            // only aim when cursor is grabbed
+            if windows.single().cursor.visible {
+                return;
+            }
+            let sensitivity = 0.001;
+
+            let mut transform = eyes.single_mut();
+            let delta = mouse_motion_events.read().map(|e| e.delta).sum::<Vec2>();
+            // FIXME: limit X turn angle
+            transform.rotate_y(-delta.x * sensitivity);
+            transform.rotate_local_x(-delta.y * sensitivity);
+        }
+
         /// set up a simple 3D scene
         fn setup_scene(
             mut commands: Commands,
             mut meshes: ResMut<Assets<Mesh>>,
             mut materials: ResMut<Assets<StandardMaterial>>,
-            asset_server: Res<AssetServer>,
         ) {
             // circular base
             commands.spawn(PbrBundle {
@@ -214,23 +268,6 @@ impl Plugin for PetriClientPlugin {
                 )),
                 ..default()
             });
-
-            // camera
-            commands.spawn((
-                Camera3dBundle {
-                    transform: Transform::from_xyz(-2.5, 4.5, -9.0).looking_at(Vec3::ZERO, Vec3::Y),
-                    ..default()
-                },
-                Skybox {
-                    image: asset_server.load("diffuse.ktx2"),
-                    brightness: 150.0,
-                },
-                EnvironmentMapLight {
-                    specular_map: asset_server.load("specular.ktx2"),
-                    diffuse_map: asset_server.load("diffuse.ktx2"),
-                    intensity: 150.0,
-                },
-            ));
         }
 
         // Player id of the player who is playing this instance of the game
@@ -282,11 +319,11 @@ impl Plugin for PetriClientPlugin {
         // FIXME: this doesn't clean up labels on disconnects
         fn hud_update_player_names(
             mut commands: Commands,
-            players: Query<(Entity, &PlayerName, &GlobalTransform)>,
+            players: Query<(Entity, &PlayerName, &GlobalTransform), Without<Me>>,
             mut labels: Query<&mut PlayerNameLabel>,
             mut styles: Query<&mut Style>,
             asset_server: Res<AssetServer>,
-            camera: Query<(&Camera, &GlobalTransform)>,
+            camera: Query<(&Camera, &GlobalTransform), With<Eyes>>,
         ) {
             let (camera, camera_transform) = camera.single();
             for (player_entity, name, player_transform) in &players {
@@ -333,14 +370,32 @@ impl Plugin for PetriClientPlugin {
     }
 }
 
-fn send_movement(mut writer: EventWriter<MoveDirection>, input: Res<ButtonInput<KeyCode>>) {
+#[derive(Resource, Debug)]
+pub struct CurrentUserLogin(String);
+
+/// Marks the entity with the camera that represents players eyes
+#[derive(Component)]
+struct Eyes;
+
+/// Marks the entity that represents the player
+#[derive(Component)]
+struct Me;
+
+fn send_movement(
+    mut writer: EventWriter<MoveDirection>,
+    input: Res<ButtonInput<KeyCode>>,
+    eyes: Query<&GlobalTransform, With<Eyes>>,
+) {
+    let pos = eyes.single();
+    let forward = pos.forward();
+
     let mut direction = Vec2::default();
     // FIXME: figure out the correct directions
     static KEYBINDINGS: &[(KeyCode, Vec2)] = &[
-        (KeyCode::KeyA, Vec2::new(1.0, 0.0)),
-        (KeyCode::KeyD, Vec2::new(-1.0, 0.0)),
-        (KeyCode::KeyW, Vec2::new(0.0, 1.0)),
-        (KeyCode::KeyS, Vec2::new(0.0, -1.0)),
+        (KeyCode::KeyA, Vec2::new(0.0, -1.0)),
+        (KeyCode::KeyD, Vec2::new(0.0, 1.0)),
+        (KeyCode::KeyW, Vec2::new(1.0, 0.0)),
+        (KeyCode::KeyS, Vec2::new(-1.0, 0.0)),
     ];
 
     for (key, dir) in KEYBINDINGS {
@@ -349,7 +404,32 @@ fn send_movement(mut writer: EventWriter<MoveDirection>, input: Res<ButtonInput<
         }
     }
 
+    let rotated = direction.rotate(Vec2 {
+        x: forward.x,
+        y: forward.z,
+    });
+
     if direction.length() != 0.0 {
-        writer.send(MoveDirection(direction));
+        writer.send(MoveDirection(rotated));
+    }
+}
+
+/// This system grabs the mouse when the left mouse button is pressed
+/// and releases it when the escape key is pressed
+fn grab_mouse(
+    mut windows: Query<&mut Window>,
+    mouse: Res<ButtonInput<MouseButton>>,
+    key: Res<ButtonInput<KeyCode>>,
+) {
+    let mut window = windows.single_mut();
+
+    if mouse.just_pressed(MouseButton::Left) {
+        window.cursor.visible = false;
+        window.cursor.grab_mode = CursorGrabMode::Locked;
+    }
+
+    if key.just_pressed(KeyCode::Escape) {
+        window.cursor.visible = true;
+        window.cursor.grab_mode = CursorGrabMode::None;
     }
 }
