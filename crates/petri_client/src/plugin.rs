@@ -169,14 +169,11 @@ impl Plugin for PetriClientPlugin {
             })
         }
 
-        #[derive(Component)]
-        struct PlayerHydrated;
-
         fn add_mesh_to_players(
             mut commands: Commands,
             mut meshes: ResMut<Assets<Mesh>>,
             mut materials: ResMut<Assets<StandardMaterial>>,
-            players_without_mesh: Query<(Entity, &Player, &PlayerColor), Without<PlayerHydrated>>,
+            players_without_mesh: Query<(Entity, &Player, &PlayerColor), Added<Player>>,
         ) {
             for (entity, player, player_color) in players_without_mesh.iter() {
                 info!("Adding mesh to {player:?}");
@@ -191,8 +188,7 @@ impl Plugin for PetriClientPlugin {
                         material: materials.add(player_color.0),
                         transform: Transform::from_xyz(0.0, 0.5, 0.0),
                         ..default()
-                    })
-                    .insert(PlayerHydrated);
+                    });
             }
         }
 
