@@ -1,4 +1,7 @@
-use crate::blob_assets::{Blob, BlobLoaderPlugin};
+use crate::{
+    blob_assets::{Blob, BlobLoaderPlugin},
+    enemy::EnemyPlugin,
+};
 use bevy::{prelude::*, utils::HashMap};
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::{
@@ -24,6 +27,7 @@ pub struct PetriServerPlugin;
 impl Plugin for PetriServerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(BlobLoaderPlugin)
+            .add_plugins(EnemyPlugin)
             .init_resource::<ObjFileWithColliderHandle>()
             .add_systems(
                 Startup,
