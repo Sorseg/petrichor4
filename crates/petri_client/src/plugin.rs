@@ -1,7 +1,7 @@
 use crate::login_plugin::{CurrentUserLogin, LoginPlugin};
 use bevy::{
     core_pipeline::Skybox, ecs::query::QueryEntityError, input::mouse::MouseMotion, prelude::*,
-    window::CursorGrabMode,
+    time::common_conditions::on_timer, window::CursorGrabMode,
 };
 use bevy_replicon::{
     client_just_connected,
@@ -16,7 +16,7 @@ use petri_shared::{
 };
 use std::{
     net::{Ipv4Addr, SocketAddr, UdpSocket},
-    time::SystemTime,
+    time::{Duration, SystemTime},
 };
 
 pub struct PetriClientPlugin;
@@ -44,6 +44,7 @@ impl Plugin for PetriClientPlugin {
                         .run_if(any_with_component::<Eyes>),
                     hydrate_players,
                     move_player_from_network,
+                    log_entity_names.run_if(on_timer(Duration::from_secs(1))),
                 )
                     .run_if(in_state(PetriState::Scene)),
             )
@@ -317,5 +318,12 @@ fn grab_mouse(
     if key.just_pressed(KeyCode::Escape) {
         window.cursor.visible = true;
         window.cursor.grab_mode = CursorGrabMode::None;
+    }
+}
+
+fn log_entity_names(e: Query<&Name>) {
+    info!("Entities:");
+    for e in &e {
+        info!("{e}");
     }
 }
