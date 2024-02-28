@@ -1,7 +1,7 @@
 //! Client app
 
-mod plugin;
 mod login_plugin;
+mod plugin;
 
 use crate::plugin::PetriClientPlugin;
 use bevy::prelude::*;

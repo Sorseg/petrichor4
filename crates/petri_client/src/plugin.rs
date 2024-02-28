@@ -1,8 +1,6 @@
+use crate::login_plugin::{CurrentUserLogin, LoginPlugin};
 use bevy::{
-    core_pipeline::Skybox,
-    ecs::query::QueryEntityError,
-    input::{keyboard::KeyboardInput, mouse::MouseMotion},
-    prelude::*,
+    core_pipeline::Skybox, ecs::query::QueryEntityError, input::mouse::MouseMotion, prelude::*,
     window::CursorGrabMode,
 };
 use bevy_replicon::{
@@ -14,13 +12,12 @@ use bevy_replicon::{
     },
 };
 use petri_shared::{
-    get_player_capsule_size, MoveDirection, Player, PlayerColor, PlayerName, PlayerPos, SetName,
+    get_player_capsule_size, MoveDirection, Player, PlayerColor, PlayerPos, SetName,
 };
 use std::{
     net::{Ipv4Addr, SocketAddr, UdpSocket},
     time::SystemTime,
 };
-use crate::login_plugin::{CurrentUserLogin, LoginPlugin};
 
 pub struct PetriClientPlugin;
 
@@ -43,7 +40,7 @@ impl Plugin for PetriClientPlugin {
                 (
                     grab_mouse,
                     send_name.run_if(client_just_connected),
-                    (aim, hud_update_player_names, send_movement)
+                    (aim, hud_update_entity_name_plaques, send_movement)
                         .run_if(any_with_component::<Eyes>),
                     hydrate_players,
                     move_player_from_network,
@@ -119,7 +116,7 @@ impl Plugin for PetriClientPlugin {
         fn aim(
             mut mouse_motion_events: EventReader<MouseMotion>,
             mut eyes: Query<&mut Transform, With<Eyes>>,
-            mut windows: Query<&mut Window>,
+            windows: Query<&mut Window>,
         ) {
             // only aim when cursor is grabbed
             if windows.single().cursor.visible {
@@ -209,21 +206,22 @@ impl Plugin for PetriClientPlugin {
         struct PlayerNameLabel(Entity);
 
         // FIXME: this doesn't clean up labels on disconnects
-        fn hud_update_player_names(
+        /// creates labels and updates their positions
+        fn hud_update_entity_name_plaques(
             mut commands: Commands,
-            players: Query<(Entity, &PlayerName, &GlobalTransform), Without<Me>>,
+            named_entities: Query<(Entity, &Name, &GlobalTransform), Without<Me>>,
             mut labels: Query<&mut PlayerNameLabel>,
             mut styles: Query<&mut Style>,
             asset_server: Res<AssetServer>,
             camera: Query<(&Camera, &GlobalTransform), With<Eyes>>,
         ) {
             let (camera, camera_transform) = camera.single();
-            for (player_entity, name, player_transform) in &players {
+            for (entity, name, transform) in &named_entities {
                 // FIXME: update and create in a single step
-                match labels.get_mut(player_entity) {
-                    Ok((label)) => {
-                        let pos = camera
-                            .world_to_viewport(camera_transform, player_transform.translation());
+                match labels.get_mut(entity) {
+                    Ok(label) => {
+                        let pos =
+                            camera.world_to_viewport(camera_transform, transform.translation());
                         if let Some(p) = pos {
                             let mut style = styles.get_mut(label.0).unwrap();
                             style.left = Val::Px(p.x);
@@ -235,7 +233,7 @@ impl Plugin for PetriClientPlugin {
                         let node = commands
                             .spawn(TextBundle {
                                 text: Text::from_section(
-                                    &name.0,
+                                    name,
                                     TextStyle {
                                         font: asset_server.load("open-sans.ttf"),
                                         font_size: 10.0,
@@ -251,17 +249,14 @@ impl Plugin for PetriClientPlugin {
                                 ..default()
                             })
                             .id();
-                        commands.entity(player_entity).insert(PlayerNameLabel(node));
+                        commands.entity(entity).insert(PlayerNameLabel(node));
                     }
                     Err(e) => panic!("{e:?}"),
                 };
             }
         }
-
-        fn cleanup_despawned_name_plaques() {}
     }
 }
-
 
 /// Marks the entity with the camera that represents players eyes
 #[derive(Component)]

@@ -10,7 +10,7 @@ use bevy_replicon::{
 };
 use obj::{load_obj, Obj, Position};
 use petri_shared::{
-    get_player_capsule_size, MoveDirection, Player, PlayerColor, PlayerName, PlayerPos, SetName,
+    get_player_capsule_size, MoveDirection, Player, PlayerColor, PlayerPos, SetName,
 };
 use rand::random;
 use std::{
@@ -43,7 +43,7 @@ impl Plugin for PetriServerPlugin {
 
         fn receive_names(
             mut events: EventReader<FromClient<SetName>>,
-            mut clients: Query<(Entity, &Player), Without<PlayerName>>,
+            mut clients: Query<(Entity, &Player), Without<Name>>,
             mut commands: Commands,
         ) {
             // FIXME: get entity by client id
@@ -53,7 +53,7 @@ impl Plugin for PetriServerPlugin {
                     if client_id == &event.client_id {
                         commands
                             .entity(entity)
-                            .insert(PlayerName(event.event.0.clone()));
+                            .insert(Name::new(event.event.0.clone()));
                     }
                 }
             }

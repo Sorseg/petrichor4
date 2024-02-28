@@ -1,9 +1,16 @@
-use bevy::app::{App, Plugin, Update};
-use bevy::asset::AssetServer;
-use bevy::hierarchy::DespawnRecursiveExt;
-use bevy::input::keyboard::KeyboardInput;
-use bevy::prelude::{AlignItems, BackgroundColor, BuildChildren, Camera2dBundle, Color, Commands, Component, default, Entity, EventReader, FlexDirection, in_state, IntoSystemConfigs, JustifyContent, JustifyText, KeyCode, NextState, NodeBundle, OnEnter, OnExit, Outline, Query, ReceivedCharacter, Res, ResMut, Resource, Style, Text, TextBundle, TextStyle, Val, With};
-use crate::plugin::{PetriState};
+use crate::plugin::PetriState;
+use bevy::{
+    app::{App, Plugin, Update},
+    asset::AssetServer,
+    hierarchy::DespawnRecursiveExt,
+    input::keyboard::KeyboardInput,
+    prelude::{
+        default, in_state, AlignItems, BackgroundColor, BuildChildren, Camera2dBundle, Color,
+        Commands, Component, Entity, EventReader, FlexDirection, IntoSystemConfigs, JustifyContent,
+        JustifyText, KeyCode, NextState, NodeBundle, OnEnter, OnExit, Outline, Query,
+        ReceivedCharacter, Res, ResMut, Resource, Style, Text, TextBundle, TextStyle, Val, With,
+    },
+};
 
 pub struct LoginPlugin;
 
@@ -18,8 +25,7 @@ struct LoginUIMarker;
 
 impl Plugin for LoginPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .insert_resource(CurrentUserLogin(String::new()))
+        app.insert_resource(CurrentUserLogin(String::new()))
             .add_systems(OnEnter(PetriState::Login), login_screen)
             .add_systems(Update, login_input.run_if(in_state(PetriState::Login)))
             .add_systems(
@@ -29,8 +35,7 @@ impl Plugin for LoginPlugin {
                         .iter()
                         .for_each(|l| cmd.entity(l).despawn_recursive())
                 },
-            )
-        ;
+            );
     }
 }
 
@@ -68,7 +73,7 @@ fn login_screen(mut cmd: Commands, asset_server: Res<AssetServer>) {
                     ..default()
                 },
             ) // Set the alignment of the Text
-                .with_text_justify(JustifyText::Center),
+            .with_text_justify(JustifyText::Center),
         )
         .id();
 
@@ -99,7 +104,7 @@ fn login_screen(mut cmd: Commands, asset_server: Res<AssetServer>) {
                     ..default()
                 },
             ) // Set the alignment of the Text
-                .with_text_justify(JustifyText::Center),
+            .with_text_justify(JustifyText::Center),
             LoginInput,
         ))
         .id();
@@ -139,4 +144,3 @@ fn login_input(
         l.sections[0].value = format!("{}_", login.0);
     })
 }
-

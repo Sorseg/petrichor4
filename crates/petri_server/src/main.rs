@@ -1,4 +1,5 @@
 mod blob_assets;
+mod enemy;
 mod plugin;
 
 use crate::plugin::PetriServerPlugin;
