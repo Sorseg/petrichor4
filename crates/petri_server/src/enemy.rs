@@ -8,7 +8,7 @@ use bevy_rapier3d::{
     prelude::{Collider, RigidBody},
 };
 use bevy_replicon::prelude::Replication;
-use petri_shared::{get_player_capsule_size, Appearance, ReplicatedPos, Tint};
+use petri_shared::{get_player_capsule_size, Appearance, ReplicatedPos, ReplicationBundle, Tint};
 
 pub struct EnemyPlugin;
 
@@ -30,13 +30,10 @@ fn spawn_monster(mut command: Commands) {
         Collider::capsule_y(capsule_segment_half_height, capsule_diameter / 2.0),
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED,
-        ReplicatedPos(default()),
         TransformBundle {
             local: Transform::from_xyz(0.0, 10.0, 0.0),
             ..default()
         },
-        Tint(Color::PINK),
-        Appearance::Box,
-        Replication,
+        ReplicationBundle::new(Tint(Color::PINK), Appearance::Box),
     ));
 }

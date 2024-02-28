@@ -9,7 +9,7 @@ use bevy::{
     prelude::*,
 };
 use bevy_replicon::prelude::*;
-use petri_shared::PetriReplicationSetup;
+use petri_shared::PetriReplicationSetupPlugin;
 use std::time::Duration;
 
 fn main() {
@@ -30,7 +30,7 @@ fn main() {
                     tick_policy: TickPolicy::MaxTickRate(60),
                     ..Default::default()
                 }),
-            PetriReplicationSetup,
+            PetriReplicationSetupPlugin,
             PetriServerPlugin,
         ))
         .run();

@@ -24,9 +24,28 @@ pub enum Appearance {
     Box,
 }
 
-pub struct PetriReplicationSetup;
+#[derive(Bundle)]
+pub struct ReplicationBundle {
+    tint: Tint,
+    appearance: Appearance,
+    pos: ReplicatedPos,
+    replicate: Replication,
+}
 
-impl Plugin for PetriReplicationSetup {
+impl ReplicationBundle {
+    pub fn new(tint: Tint, appearance: Appearance) -> Self {
+        Self {
+            tint,
+            appearance,
+            pos: ReplicatedPos(default()),
+            replicate: Replication,
+        }
+    }
+}
+
+pub struct PetriReplicationSetupPlugin;
+
+impl Plugin for PetriReplicationSetupPlugin {
     fn build(&self, app: &mut App) {
         app
             // components
