@@ -13,7 +13,7 @@ use bevy_replicon::{
 };
 use obj::{load_obj, Obj, Position};
 use petri_shared::{
-    get_player_capsule_size, MoveDirection, Player, PlayerColor, PlayerPos, SetName,
+    get_player_capsule_size, Appearance, MoveDirection, Player, ReplicatedPos, SetName, Tint,
 };
 use rand::random;
 use std::{
@@ -88,9 +88,10 @@ impl Plugin for PetriServerPlugin {
                                 2.5,
                                 random::<f32>() * 3.0 + 1.5,
                             )),
-                            PlayerPos(default()),
+                            ReplicatedPos(default()),
                             ExternalImpulse::default(),
-                            PlayerColor(Color::rgb(r, g, b)),
+                            Tint(Color::rgb(r, g, b)),
+                            Appearance::Capsule,
                             Replication,
                             Collider::capsule_y(
                                 capsule_segment_half_height,
@@ -117,7 +118,7 @@ impl Plugin for PetriServerPlugin {
             }
         }
 
-        fn update_player_pos(mut players: Query<(&GlobalTransform, &mut PlayerPos)>) {
+        fn update_player_pos(mut players: Query<(&GlobalTransform, &mut ReplicatedPos)>) {
             players.iter_mut().for_each(|(local_pos, mut shared_pos)| {
                 shared_pos.0 = *local_pos;
             })

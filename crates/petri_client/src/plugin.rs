@@ -1,7 +1,11 @@
 use crate::login_plugin::{CurrentUserLogin, LoginPlugin};
 use bevy::{
-    core_pipeline::Skybox, ecs::query::QueryEntityError, input::mouse::MouseMotion, prelude::*,
-    time::common_conditions::on_timer, window::CursorGrabMode,
+    core_pipeline::Skybox,
+    ecs::{query::QueryEntityError, system::EntityCommands},
+    input::mouse::MouseMotion,
+    prelude::*,
+    time::common_conditions::on_timer,
+    window::CursorGrabMode,
 };
 use bevy_replicon::{
     client_just_connected,
@@ -12,7 +16,7 @@ use bevy_replicon::{
     },
 };
 use petri_shared::{
-    get_player_capsule_size, MoveDirection, Player, PlayerColor, PlayerPos, SetName,
+    get_player_capsule_size, Appearance, MoveDirection, Player, ReplicatedPos, SetName, Tint,
 };
 use std::{
     net::{Ipv4Addr, SocketAddr, UdpSocket},
@@ -42,7 +46,7 @@ impl Plugin for PetriClientPlugin {
                     send_name.run_if(client_just_connected),
                     (aim, hud_update_entity_name_plaques, send_movement)
                         .run_if(any_with_component::<Eyes>),
-                    hydrate_players,
+                    hydrate_entities,
                     move_player_from_network,
                     log_entity_names.run_if(on_timer(Duration::from_secs(1))),
                 )
@@ -50,57 +54,33 @@ impl Plugin for PetriClientPlugin {
             )
             .add_systems(OnExit(PetriState::Scene), || todo!("Clean up world"));
 
-        fn hydrate_players(
+        fn hydrate_entities(
             mut commands: Commands,
             mut meshes: ResMut<Assets<Mesh>>,
             mut materials: ResMut<Assets<StandardMaterial>>,
-            players_without_mesh: Query<(Entity, &Player, &PlayerColor), Added<Player>>,
+            dry_entities: Query<(Entity, &Tint, &Appearance), Added<Appearance>>,
+            names: Query<&Name>,
+            player_id: Query<&Player>,
             my_player_id: Res<MyPlayerId>,
             asset_server: Res<AssetServer>,
         ) {
-            for (entity, player, player_color) in players_without_mesh.iter() {
-                info!("Adding mesh to {player:?}");
+            for (entity, tint, appearnce) in dry_entities.iter() {
+                info!("Adding mesh to {:?}", names.get(entity));
                 let (capsule_diameter, capsule_segment_half_height) = get_player_capsule_size();
-                let mut entity = commands.entity(entity);
-                if player.0.raw() == my_player_id.0 {
-                    entity.insert((Me, TransformBundle::default()));
-                    let height = 1.0;
-                    entity.with_children(|parent| {
-                        parent.spawn(
-                            // camera
-                            (
-                                Eyes,
-                                Camera3dBundle {
-                                    transform: Transform::from_xyz(0.0, height, 0.0).looking_at(
-                                        // TODO: replace with zero, will be rewritten by the aiming system anyway
-                                        Vec3 {
-                                            x: 0.0,
-                                            y: height,
-                                            z: 10.0,
-                                        },
-                                        Vec3::Y,
-                                    ),
-                                    ..default()
-                                },
-                                Skybox {
-                                    image: asset_server.load("specular.ktx2"),
-                                    brightness: 150.0,
-                                },
-                                EnvironmentMapLight {
-                                    specular_map: asset_server.load("specular.ktx2"),
-                                    diffuse_map: asset_server.load("diffuse.ktx2"),
-                                    intensity: 150.0,
-                                },
-                            ),
-                        );
-                    });
+                let mut entity_builder = commands.entity(entity);
+                info!("Player id: {:?}", player_id.get(entity));
+                if player_id.get(entity).map(|p| p.0.raw()) == Ok(my_player_id.0) {
+                    spawn_me(&asset_server, &mut entity_builder);
                 } else {
-                    entity.insert(PbrBundle {
-                        mesh: meshes.add(Capsule3d::new(
-                            capsule_diameter / 2.0,
-                            capsule_segment_half_height * 2.0,
-                        )),
-                        material: materials.add(player_color.0),
+                    entity_builder.insert(PbrBundle {
+                        mesh: match appearnce {
+                            Appearance::Capsule => meshes.add(Capsule3d::new(
+                                capsule_diameter / 2.0,
+                                capsule_segment_half_height * 2.0,
+                            )),
+                            Appearance::Box => meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
+                        },
+                        material: materials.add(tint.0),
                         transform: Transform::from_xyz(0.0, 0.5, 0.0),
                         ..default()
                     });
@@ -108,7 +88,41 @@ impl Plugin for PetriClientPlugin {
             }
         }
 
-        fn move_player_from_network(mut players: Query<(&mut Transform, &PlayerPos)>) {
+        fn spawn_me(asset_server: &Res<AssetServer>, entity_builder: &mut EntityCommands) {
+            entity_builder.insert((Me, TransformBundle::default()));
+            let height = 1.0;
+            entity_builder.with_children(|parent| {
+                parent.spawn(
+                    // camera
+                    (
+                        Eyes,
+                        Camera3dBundle {
+                            transform: Transform::from_xyz(0.0, height, 0.0).looking_at(
+                                // TODO: replace with zero, will be rewritten by the aiming system anyway
+                                Vec3 {
+                                    x: 0.0,
+                                    y: height,
+                                    z: 10.0,
+                                },
+                                Vec3::Y,
+                            ),
+                            ..default()
+                        },
+                        Skybox {
+                            image: asset_server.load("specular.ktx2"),
+                            brightness: 150.0,
+                        },
+                        EnvironmentMapLight {
+                            specular_map: asset_server.load("specular.ktx2"),
+                            diffuse_map: asset_server.load("diffuse.ktx2"),
+                            intensity: 150.0,
+                        },
+                    ),
+                );
+            });
+        }
+
+        fn move_player_from_network(mut players: Query<(&mut Transform, &ReplicatedPos)>) {
             for (mut t, p) in &mut players {
                 *t = p.0.into();
             }

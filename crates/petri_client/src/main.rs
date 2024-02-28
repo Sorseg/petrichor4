@@ -6,7 +6,7 @@ mod plugin;
 use crate::plugin::PetriClientPlugin;
 use bevy::prelude::*;
 use bevy_replicon::{server::ServerPlugin, ReplicationPlugins};
-use petri_shared::PetriSharedSetup;
+use petri_shared::PetriReplicationSetup;
 
 fn main() {
     App::new()
@@ -20,7 +20,7 @@ fn main() {
                 ..default()
             }),
             ReplicationPlugins.build().disable::<ServerPlugin>(),
-            PetriSharedSetup,
+            PetriReplicationSetup,
             PetriClientPlugin,
         ))
         .run();
