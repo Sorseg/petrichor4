@@ -10,22 +10,32 @@ pub struct Player(pub ClientId);
 pub struct MoveDirection(pub Vec2);
 
 #[derive(Component, Serialize, Deserialize)]
-pub struct PlayerPos(pub GlobalTransform);
+pub struct ReplicatedPos(pub GlobalTransform);
 
 #[derive(Component, Serialize, Deserialize)]
-pub struct PlayerColor(pub Color);
+pub struct Tint(pub Color);
 
 #[derive(Event, Debug, Serialize, Deserialize)]
 pub struct SetName(pub String);
 
-pub struct PetriSharedSetup;
+#[derive(Component, Debug, Serialize, Deserialize)]
+pub enum Appearance {
+    Capsule,
+    Box,
+}
 
-impl Plugin for PetriSharedSetup {
+pub struct PetriReplicationSetup;
+
+impl Plugin for PetriReplicationSetup {
     fn build(&self, app: &mut App) {
-        app.replicate::<Player>()
-            .replicate::<PlayerColor>()
-            .replicate::<PlayerPos>()
+        app
+            // components
+            .replicate::<Player>()
+            .replicate::<Tint>()
+            .replicate::<ReplicatedPos>()
+            .replicate::<Appearance>()
             .replicate::<Name>()
+            // events
             .add_client_event::<MoveDirection>(EventType::Ordered)
             .add_client_event::<SetName>(EventType::Ordered);
     }
