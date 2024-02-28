@@ -134,12 +134,17 @@ impl Plugin for PetriClientPlugin {
             transform.rotate_local_x(-delta.y * sensitivity);
         }
 
-        /// set up a simple 3D scene
+        /// load the 3d scene
         fn setup_scene(
             mut commands: Commands,
             mut meshes: ResMut<Assets<Mesh>>,
             mut materials: ResMut<Assets<StandardMaterial>>,
+            asset_server: Res<AssetServer>,
         ) {
+            commands.spawn(SceneBundle {
+                scene: asset_server.load("petrichor4-intro.glb#Scene0"),
+                ..default()
+            });
             // circular base
             commands.spawn(PbrBundle {
                 mesh: meshes.add(Circle::new(4.0)),
