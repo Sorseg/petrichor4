@@ -84,20 +84,21 @@ impl Plugin for PetriServerPlugin {
 
                         commands.spawn((
                             Player(*client_id),
-                            TransformBundle::from_transform(Transform::from_xyz(
-                                random::<f32>() * 3.0 + 1.5,
-                                2.5,
-                                random::<f32>() * 3.0 + 1.5,
-                            )),
                             ReplicationBundle::new(Tint(Color::rgb(r, g, b)), Appearance::Capsule),
-                            ExternalImpulse::default(),
-                            Collider::capsule_y(
-                                capsule_segment_half_height,
-                                capsule_diameter / 2.0,
-                            ),
-                            ReadMassProperties::default(),
-                            RigidBody::Dynamic,
+                            PhysicsBundle {
+                                collider: Collider::capsule_y(
+                                    capsule_segment_half_height,
+                                    capsule_diameter / 2.0,
+                                ),
+                                trans: TransformBundle::from_transform(Transform::from_xyz(
+                                    random::<f32>() * 3.0 + 1.5,
+                                    2.5,
+                                    random::<f32>() * 3.0 + 1.5,
+                                )),
+                                ..default()
+                            },
                             LockedAxes::ROTATION_LOCKED,
+                            // FIXME: replace with friction
                             Damping {
                                 linear_damping: 2.0,
                                 angular_damping: 0.0,
@@ -237,4 +238,13 @@ fn move_clients(
             info!("POLTERGEIST IS MOVING");
         }
     }
+}
+
+#[derive(Bundle, Default)]
+struct PhysicsBundle {
+    impulse: ExternalImpulse,
+    collider: Collider,
+    mass_props: ReadMassProperties,
+    rigid_body: RigidBody,
+    trans: TransformBundle,
 }
