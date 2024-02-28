@@ -241,10 +241,10 @@ fn move_clients(
 }
 
 #[derive(Bundle, Default)]
-struct PhysicsBundle {
-    impulse: ExternalImpulse,
-    collider: Collider,
-    mass_props: ReadMassProperties,
-    rigid_body: RigidBody,
-    trans: TransformBundle,
+pub struct PhysicsBundle {
+    pub impulse: ExternalImpulse,
+    pub collider: Collider,
+    pub mass_props: ReadMassProperties,
+    pub rigid_body: RigidBody,
+    pub trans: TransformBundle,
 }

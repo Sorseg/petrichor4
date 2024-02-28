@@ -1,3 +1,4 @@
+use crate::plugin::PhysicsBundle;
 use bevy::{
     app::{App, Plugin},
     prelude::{Color, Commands, Component, Name, Startup, Transform, TransformBundle},
@@ -27,13 +28,15 @@ fn spawn_monster(mut command: Commands) {
     command.spawn((
         Name::new("Monster"),
         Monster,
-        Collider::capsule_y(capsule_segment_half_height, capsule_diameter / 2.0),
-        RigidBody::Dynamic,
-        LockedAxes::ROTATION_LOCKED,
-        TransformBundle {
-            local: Transform::from_xyz(0.0, 10.0, 0.0),
+        ReplicationBundle::new(Tint(Color::PINK), Appearance::Box),
+        PhysicsBundle {
+            collider: Collider::capsule_y(capsule_segment_half_height, capsule_diameter / 2.0),
+            trans: TransformBundle {
+                local: Transform::from_xyz(0.0, 10.0, 0.0),
+                ..default()
+            },
             ..default()
         },
-        ReplicationBundle::new(Tint(Color::PINK), Appearance::Box),
+        LockedAxes::ROTATION_LOCKED,
     ));
 }
