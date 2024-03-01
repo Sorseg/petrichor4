@@ -72,7 +72,7 @@ impl Plugin for PetriClientPlugin {
                 let mut entity_builder = commands.entity(entity);
                 info!("Player id: {:?}", player_id.get(entity));
                 if player_id.get(entity).map(|p| p.0.raw()) == Ok(my_player_id.0) {
-                    spawn_me(&asset_server, &mut entity_builder);
+                    spawn_me(&mut entity_builder, &asset_server);
                 } else {
                     entity_builder.insert(PbrBundle {
                         mesh: match appearnce {
@@ -90,7 +90,7 @@ impl Plugin for PetriClientPlugin {
             }
         }
 
-        fn spawn_me(asset_server: &Res<AssetServer>, entity_builder: &mut EntityCommands) {
+        fn spawn_me(entity_builder: &mut EntityCommands, asset_server: &Res<AssetServer>) {
             entity_builder.insert((Me, TransformBundle::default()));
             let height = 1.0;
             entity_builder.with_children(|parent| {
