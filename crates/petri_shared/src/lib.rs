@@ -45,6 +45,9 @@ impl ReplicationBundle {
 
 pub struct PetriReplicationSetupPlugin;
 
+#[derive(Event, Debug, Serialize, Deserialize)]
+pub struct PetriMsg(pub Vec<u8>);
+
 impl Plugin for PetriReplicationSetupPlugin {
     fn build(&self, app: &mut App) {
         app
@@ -56,7 +59,8 @@ impl Plugin for PetriReplicationSetupPlugin {
             .replicate::<Name>()
             // events
             .add_client_event::<MoveDirection>(EventType::Ordered)
-            .add_client_event::<SetName>(EventType::Ordered);
+            .add_client_event::<SetName>(EventType::Ordered)
+            .add_server_event::<PetriMsg>(EventType::Ordered);
     }
 }
 

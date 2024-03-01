@@ -15,8 +15,8 @@ use bevy_replicon::{
 };
 use obj::{load_obj, Obj, Position};
 use petri_shared::{
-    get_player_capsule_size, Appearance, MoveDirection, Player, ReplicatedPos, ReplicationBundle,
-    SetName, Tint,
+    get_player_capsule_size, Appearance, MoveDirection, PetriMsg, Player, ReplicatedPos,
+    ReplicationBundle, SetName, Tint,
 };
 use rand::random;
 
@@ -52,6 +52,7 @@ impl Plugin for PetriServerPlugin {
             mut events: EventReader<FromClient<SetName>>,
             mut clients: Query<(Entity, &Player), Without<Name>>,
             mut commands: Commands,
+            mut messages: EventWriter<ToClients<PetriMsg>>,
         ) {
             // FIXME: get entity by client id
             for event in events.read() {
@@ -63,6 +64,12 @@ impl Plugin for PetriServerPlugin {
                             .insert(Name::new(event.event.0.clone()));
                     }
                 }
+                messages.send(ToClients {
+                    // Does not work, because of channel configuration
+                    // has a limit of 5 mb queue per client
+                    event: PetriMsg(vec![6; 100_000_000]),
+                    mode: SendMode::Direct(event.client_id),
+                });
             }
         }
 

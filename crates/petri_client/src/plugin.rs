@@ -20,7 +20,8 @@ use bevy_replicon::{
     },
 };
 use petri_shared::{
-    get_player_capsule_size, Appearance, MoveDirection, Player, ReplicatedPos, SetName, Tint,
+    get_player_capsule_size, Appearance, MoveDirection, PetriMsg, Player, ReplicatedPos, SetName,
+    Tint,
 };
 
 use crate::login_plugin::{CurrentUserLogin, LoginPlugin};
@@ -50,6 +51,7 @@ impl Plugin for PetriClientPlugin {
                         .run_if(any_with_component::<Eyes>),
                     hydrate_entities,
                     move_player_from_network,
+                    log_server_msgs,
                     log_entity_names.run_if(on_timer(Duration::from_secs(1))),
                 )
                     .run_if(in_state(PetriState::Scene)),
@@ -340,5 +342,11 @@ fn log_entity_names(e: Query<&Name>) {
     info!("Entities:");
     for e in &e {
         info!("{e}");
+    }
+}
+
+fn log_server_msgs(mut e: EventReader<PetriMsg>) {
+    for e in e.read() {
+        info!("Got message {}", e.0.iter().map(|n| *n as u32).sum::<u32>())
     }
 }
