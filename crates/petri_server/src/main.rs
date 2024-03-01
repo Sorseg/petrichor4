@@ -2,7 +2,8 @@ mod blob_assets;
 mod enemy;
 mod plugin;
 
-use crate::plugin::PetriServerPlugin;
+use std::time::Duration;
+
 use bevy::{
     app::{RunMode, ScheduleRunnerPlugin},
     log::LogPlugin,
@@ -10,7 +11,8 @@ use bevy::{
 };
 use bevy_replicon::prelude::*;
 use petri_shared::PetriReplicationSetupPlugin;
-use std::time::Duration;
+
+use crate::plugin::PetriServerPlugin;
 
 fn main() {
     App::new()

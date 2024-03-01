@@ -1,15 +1,12 @@
-use crate::plugin::PhysicsBundle;
 use bevy::{
     app::{App, Plugin},
     prelude::{Color, Commands, Component, Name, Startup, Transform, TransformBundle},
     utils::default,
 };
-use bevy_rapier3d::{
-    dynamics::LockedAxes,
-    prelude::{Collider, RigidBody},
-};
-use bevy_replicon::prelude::Replication;
-use petri_shared::{get_player_capsule_size, Appearance, ReplicatedPos, ReplicationBundle, Tint};
+use bevy_rapier3d::{dynamics::LockedAxes, prelude::Collider};
+use petri_shared::{get_player_capsule_size, Appearance, ReplicationBundle, Tint};
+
+use crate::plugin::PhysicsBundle;
 
 pub struct EnemyPlugin;
 

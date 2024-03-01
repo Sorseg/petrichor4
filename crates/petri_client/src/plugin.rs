@@ -1,4 +1,8 @@
-use crate::login_plugin::{CurrentUserLogin, LoginPlugin};
+use std::{
+    net::{Ipv4Addr, SocketAddr, UdpSocket},
+    time::{Duration, SystemTime},
+};
+
 use bevy::{
     core_pipeline::Skybox,
     ecs::{query::QueryEntityError, system::EntityCommands},
@@ -18,10 +22,8 @@ use bevy_replicon::{
 use petri_shared::{
     get_player_capsule_size, Appearance, MoveDirection, Player, ReplicatedPos, SetName, Tint,
 };
-use std::{
-    net::{Ipv4Addr, SocketAddr, UdpSocket},
-    time::{Duration, SystemTime},
-};
+
+use crate::login_plugin::{CurrentUserLogin, LoginPlugin};
 
 pub struct PetriClientPlugin;
 
