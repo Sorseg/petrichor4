@@ -100,11 +100,10 @@ impl Plugin for PetriClientPlugin {
                         Eyes,
                         Camera3dBundle {
                             transform: Transform::from_xyz(0.0, height, 0.0).looking_at(
-                                // TODO: replace with zero, will be rewritten by the aiming system anyway
                                 Vec3 {
                                     x: 0.0,
                                     y: height,
-                                    z: 10.0,
+                                    z: 1.0,
                                 },
                                 Vec3::Y,
                             ),
