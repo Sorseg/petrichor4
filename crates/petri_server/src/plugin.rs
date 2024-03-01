@@ -1,7 +1,9 @@
-use crate::{
-    blob_assets::{Blob, BlobLoaderPlugin},
-    enemy::EnemyPlugin,
+use std::{
+    io::Cursor,
+    net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket},
+    time::SystemTime,
 };
+
 use bevy::{prelude::*, utils::HashMap};
 use bevy_rapier3d::prelude::*;
 use bevy_replicon::{
@@ -17,10 +19,10 @@ use petri_shared::{
     SetName, Tint,
 };
 use rand::random;
-use std::{
-    io::Cursor,
-    net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket},
-    time::SystemTime,
+
+use crate::{
+    blob_assets::{Blob, BlobLoaderPlugin},
+    enemy::EnemyPlugin,
 };
 
 pub struct PetriServerPlugin;

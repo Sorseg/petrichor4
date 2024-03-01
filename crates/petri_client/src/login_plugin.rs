@@ -1,4 +1,3 @@
-use crate::plugin::PetriState;
 use bevy::{
     app::{App, Plugin, Update},
     asset::AssetServer,
@@ -11,6 +10,8 @@ use bevy::{
         ReceivedCharacter, Res, ResMut, Resource, Style, Text, TextBundle, TextStyle, Val, With,
     },
 };
+
+use crate::plugin::PetriState;
 
 pub struct LoginPlugin;
 

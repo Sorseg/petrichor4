@@ -3,10 +3,11 @@
 mod login_plugin;
 mod plugin;
 
-use crate::plugin::PetriClientPlugin;
 use bevy::prelude::*;
 use bevy_replicon::{server::ServerPlugin, ReplicationPlugins};
 use petri_shared::PetriReplicationSetupPlugin;
+
+use crate::plugin::PetriClientPlugin;
 
 fn main() {
     App::new()
