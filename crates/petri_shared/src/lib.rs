@@ -47,7 +47,7 @@ pub struct PetriReplicationSetupPlugin;
 
 impl Plugin for PetriReplicationSetupPlugin {
     fn build(&self, app: &mut App) {
-        app
+        _ = app
             // components
             .replicate::<Player>()
             .replicate::<Tint>()
@@ -56,7 +56,7 @@ impl Plugin for PetriReplicationSetupPlugin {
             .replicate::<Name>()
             // events
             .add_client_event::<MoveDirection>(EventType::Ordered)
-            .add_client_event::<SetName>(EventType::Ordered);
+            .add_client_event::<SetName>(EventType::Ordered)
     }
 }
 
