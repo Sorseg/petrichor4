@@ -337,8 +337,8 @@ fn grab_mouse(
 }
 
 fn log_entity_names(e: Query<&Name>) {
-    info!("Entities:");
+    debug!("Entities:");
     for e in &e {
-        info!("{e}");
+        debug!("{e}");
     }
 }
