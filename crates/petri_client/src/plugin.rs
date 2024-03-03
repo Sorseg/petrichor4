@@ -20,7 +20,8 @@ use bevy_replicon::{
     },
 };
 use petri_shared::{
-    get_player_capsule_size, Appearance, MoveDirection, Player, ReplicatedPos, SetName, Tint,
+    get_player_capsule_size, Aim, Appearance, MoveDirection, Player, ReplicatedAim, ReplicatedPos,
+    SetName, Tint, PLAYER_HEIGHT,
 };
 
 use crate::login_plugin::{CurrentUserLogin, LoginPlugin};
@@ -49,7 +50,7 @@ impl Plugin for PetriClientPlugin {
                     (aim, hud_update_entity_name_plaques, send_movement)
                         .run_if(any_with_component::<Eyes>),
                     hydrate_entities,
-                    move_player_from_network,
+                    move_entities_from_network,
                     log_entity_names.run_if(on_timer(Duration::from_secs(1))),
                 )
                     .run_if(in_state(PetriState::Scene)),
@@ -92,17 +93,17 @@ impl Plugin for PetriClientPlugin {
 
         fn spawn_me(entity_builder: &mut EntityCommands, asset_server: &Res<AssetServer>) {
             entity_builder.insert((Me, TransformBundle::default()));
-            let height = 1.0;
+
             entity_builder.with_children(|parent| {
                 parent.spawn(
                     // camera
                     (
                         Eyes,
                         Camera3dBundle {
-                            transform: Transform::from_xyz(0.0, height, 0.0).looking_at(
+                            transform: Transform::from_xyz(0.0, PLAYER_HEIGHT, 0.0).looking_at(
                                 Vec3 {
                                     x: 0.0,
-                                    y: height,
+                                    y: PLAYER_HEIGHT,
                                     z: 1.0,
                                 },
                                 Vec3::Y,
@@ -123,15 +124,22 @@ impl Plugin for PetriClientPlugin {
             });
         }
 
-        fn move_player_from_network(mut players: Query<(&mut Transform, &ReplicatedPos)>) {
-            for (mut t, p) in &mut players {
+        fn move_entities_from_network(
+            mut players: Query<(&mut Transform, &ReplicatedPos, &ReplicatedAim)>,
+            // debugging
+            mut gizmos: Gizmos,
+        ) {
+            for (mut t, p, a) in &mut players {
                 *t = p.0.into();
+                let start = t.translation + Vec3::Y * PLAYER_HEIGHT;
+                gizmos.ray(start, a.0 * 1.5, Color::VIOLET);
             }
         }
 
         fn aim(
             mut mouse_motion_events: EventReader<MouseMotion>,
             mut eyes: Query<&mut Transform, With<Eyes>>,
+            mut events: EventWriter<Aim>,
             windows: Query<&mut Window>,
         ) {
             // only aim when cursor is grabbed
@@ -145,6 +153,7 @@ impl Plugin for PetriClientPlugin {
             // FIXME: limit X turn angle
             transform.rotate_y(-delta.x * sensitivity);
             transform.rotate_local_x(-delta.y * sensitivity);
+            events.send(Aim(transform.forward()));
         }
 
         /// load the 3d scene

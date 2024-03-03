@@ -2,6 +2,8 @@ use bevy::prelude::*;
 use bevy_replicon::{prelude::*, renet::ClientId};
 use serde::{Deserialize, Serialize};
 
+pub const PLAYER_HEIGHT: f32 = 1.0;
+
 #[derive(Debug, Component, Serialize, Deserialize)]
 pub struct Player(pub ClientId);
 
@@ -11,6 +13,13 @@ pub struct MoveDirection(pub Vec2);
 
 #[derive(Component, Serialize, Deserialize)]
 pub struct ReplicatedPos(pub GlobalTransform);
+
+/// Send from the client when it moves its eyes
+#[derive(Event, Serialize, Deserialize)]
+pub struct Aim(pub Direction3d);
+
+#[derive(Component, Serialize, Deserialize)]
+pub struct ReplicatedAim(pub Direction3d);
 
 #[derive(Component, Serialize, Deserialize)]
 pub struct Tint(pub Color);
@@ -29,6 +38,7 @@ pub struct ReplicationBundle {
     tint: Tint,
     appearance: Appearance,
     pos: ReplicatedPos,
+    aim: ReplicatedAim,
     replicate: Replication,
 }
 
@@ -38,6 +48,8 @@ impl ReplicationBundle {
             tint,
             appearance,
             pos: ReplicatedPos(default()),
+            // look forward by default
+            aim: ReplicatedAim(Direction3d::NEG_Z),
             replicate: Replication,
         }
     }
@@ -52,11 +64,13 @@ impl Plugin for PetriReplicationSetupPlugin {
             .replicate::<Player>()
             .replicate::<Tint>()
             .replicate::<ReplicatedPos>()
+            .replicate::<ReplicatedAim>()
             .replicate::<Appearance>()
             .replicate::<Name>()
             // events
             .add_client_event::<MoveDirection>(EventType::Ordered)
             .add_client_event::<SetName>(EventType::Ordered)
+            .add_client_event::<Aim>(EventType::Unordered)
     }
 }
 
