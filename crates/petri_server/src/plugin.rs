@@ -47,6 +47,7 @@ impl Plugin for PetriServerPlugin {
                     apply_aim,
                     update_player_pos,
                     handle_admin_commands,
+                    kill_y,
                 ),
             )
             .add_plugins(RapierPhysicsPlugin::<NoUserData>::default());
@@ -130,7 +131,9 @@ impl Plugin for PetriServerPlugin {
             }
         }
 
-        fn update_player_pos(mut players: Query<(&GlobalTransform, &mut ReplicatedPos)>) {
+        fn update_player_pos(
+            mut players: Query<(&GlobalTransform, &mut ReplicatedPos), Changed<GlobalTransform>>,
+        ) {
             players.iter_mut().for_each(|(local_pos, mut shared_pos)| {
                 shared_pos.0 = *local_pos;
             })
@@ -289,7 +292,6 @@ pub struct Admin;
 fn handle_admin_commands(
     mut commands: Commands,
     mut admin_commands: EventReader<FromClient<AdminCommand>>,
-    player_positions: Query<&GlobalTransform>,
 ) {
     for command in admin_commands.read() {
         match command.event {
@@ -313,6 +315,14 @@ fn handle_admin_commands(
                     }
                 }
             }
+        }
+    }
+}
+
+fn kill_y(mut commands: Commands, query: Query<(Entity, &GlobalTransform)>) {
+    for (e, t) in query.iter() {
+        if t.translation().y < -1000.0 {
+            commands.entity(e).despawn_recursive();
         }
     }
 }
