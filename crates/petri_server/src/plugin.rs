@@ -15,8 +15,8 @@ use bevy_replicon::{
 };
 use obj::{load_obj, Obj, Position};
 use petri_shared::{
-    get_player_capsule_size, Aim, Appearance, MoveDirection, Player, ReplicatedAim, ReplicatedPos,
-    ReplicationBundle, SetName, Tint,
+    get_player_capsule_size, AdminCommand, Aim, Appearance, MoveDirection, Player, ReplicatedAim,
+    ReplicatedPos, ReplicationBundle, SetName, Tint,
 };
 use rand::random;
 
@@ -46,6 +46,7 @@ impl Plugin for PetriServerPlugin {
                     move_clients,
                     apply_aim,
                     update_player_pos,
+                    handle_admin_commands,
                 ),
             )
             .add_plugins(RapierPhysicsPlugin::<NoUserData>::default());
@@ -89,6 +90,8 @@ impl Plugin for PetriServerPlugin {
                         let entity = commands
                             .spawn((
                                 Player(*client_id),
+                                // FIXME: Players are Admins by default
+                                Admin,
                                 ReplicationBundle::new(
                                     Tint(Color::rgb(r, g, b)),
                                     Appearance::Capsule,
@@ -278,4 +281,38 @@ pub struct PhysicsBundle {
     pub mass_props: ReadMassProperties,
     pub rigid_body: RigidBody,
     pub trans: TransformBundle,
+}
+
+#[derive(Component)]
+pub struct Admin;
+
+fn handle_admin_commands(
+    mut commands: Commands,
+    mut admin_commands: EventReader<FromClient<AdminCommand>>,
+    player_positions: Query<&GlobalTransform>,
+) {
+    for command in admin_commands.read() {
+        match command.event {
+            AdminCommand::SpawnBoxWall { side_size, at } => {
+                for xi in 0..side_size {
+                    for yi in 0..side_size {
+                        commands.spawn((
+                            PhysicsBundle {
+                                collider: Collider::cuboid(0.5, 0.5, 0.5),
+                                trans: TransformBundle::from_transform(Transform::from_xyz(
+                                    at.x + xi as f32,
+                                    at.y + yi as f32,
+                                    at.z,
+                                )),
+                                // FIXME: boxes probably do not need mass props
+                                ..default()
+                            },
+                            // FIXME: boxes don't have aim
+                            ReplicationBundle::new(Tint(Color::GREEN), Appearance::Box),
+                        ));
+                    }
+                }
+            }
+        }
+    }
 }

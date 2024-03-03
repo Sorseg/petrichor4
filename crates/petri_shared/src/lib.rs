@@ -68,6 +68,7 @@ impl Plugin for PetriReplicationSetupPlugin {
             .replicate::<Appearance>()
             .replicate::<Name>()
             // events
+            .add_client_event::<AdminCommand>(EventType::Ordered)
             .add_client_event::<MoveDirection>(EventType::Ordered)
             .add_client_event::<SetName>(EventType::Ordered)
             .add_client_event::<Aim>(EventType::Unordered)
@@ -83,4 +84,9 @@ pub fn get_player_capsule_size() -> (f32, f32) {
     let capsule_total_half_height = capsule_total_height / 2.0;
     let capsule_segment_half_height = capsule_total_half_height - (capsule_diameter / 2.0);
     (capsule_diameter, capsule_segment_half_height)
+}
+
+#[derive(Debug, Event, Serialize, Deserialize)]
+pub enum AdminCommand {
+    SpawnBoxWall { side_size: u8, at: Vec3 },
 }
