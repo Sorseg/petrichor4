@@ -237,7 +237,7 @@ fn move_clients(
             } * KONSTANTA
                 * props.mass;
         } else {
-            info!("POLTERGEIST IS MOVING");
+            error!("POLTERGEIST IS MOVING");
         }
     }
 }
