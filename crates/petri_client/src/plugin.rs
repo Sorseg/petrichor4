@@ -364,7 +364,7 @@ fn create_wall(
     eyes: Query<&GlobalTransform, With<Eyes>>,
     mut events: EventWriter<AdminCommand>,
 ) {
-    if mouse.just_pressed(MouseButton::Left) {
+    if mouse.just_pressed(MouseButton::Right) {
         let eyes = eyes.single();
         let at = eyes.translation() + eyes.forward() * 3.0;
         events.send(AdminCommand::SpawnBoxWall { side_size: 3, at });
