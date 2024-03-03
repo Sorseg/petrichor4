@@ -10,13 +10,13 @@ use bevy_replicon::{
     prelude::*,
     renet::{
         transport::{NetcodeServerTransport, ServerAuthentication, ServerConfig},
-        ConnectionConfig, ServerEvent,
+        ClientId, ConnectionConfig, ServerEvent,
     },
 };
 use obj::{load_obj, Obj, Position};
 use petri_shared::{
-    get_player_capsule_size, Appearance, MoveDirection, Player, ReplicatedPos, ReplicationBundle,
-    SetName, Tint,
+    get_player_capsule_size, Aim, Appearance, MoveDirection, Player, ReplicatedAim, ReplicatedPos,
+    ReplicationBundle, SetName, Tint,
 };
 use rand::random;
 
@@ -32,6 +32,7 @@ impl Plugin for PetriServerPlugin {
         app.add_plugins(BlobLoaderPlugin)
             .add_plugins(EnemyPlugin)
             .init_resource::<ObjFileWithColliderHandle>()
+            .init_resource::<PlayerMap>()
             .add_systems(
                 Startup,
                 (load_collider, setup_server_networking.map(Result::unwrap)),
@@ -43,6 +44,7 @@ impl Plugin for PetriServerPlugin {
                     receive_names,
                     load_collider_from_mesh,
                     move_clients,
+                    apply_aim,
                     update_player_pos,
                 ),
             )
@@ -70,7 +72,7 @@ impl Plugin for PetriServerPlugin {
         fn server_event_system(
             mut commands: Commands,
             mut server_event: EventReader<ServerEvent>,
-            clients: Query<(Entity, &Player)>,
+            mut player_map: ResMut<PlayerMap>,
         ) {
             for event in server_event.read() {
                 match event {
@@ -84,36 +86,42 @@ impl Plugin for PetriServerPlugin {
                         let (capsule_diameter, capsule_segment_half_height) =
                             get_player_capsule_size();
 
-                        commands.spawn((
-                            Player(*client_id),
-                            ReplicationBundle::new(Tint(Color::rgb(r, g, b)), Appearance::Capsule),
-                            PhysicsBundle {
-                                collider: Collider::capsule_y(
-                                    capsule_segment_half_height,
-                                    capsule_diameter / 2.0,
+                        let entity = commands
+                            .spawn((
+                                Player(*client_id),
+                                ReplicationBundle::new(
+                                    Tint(Color::rgb(r, g, b)),
+                                    Appearance::Capsule,
                                 ),
-                                trans: TransformBundle::from_transform(Transform::from_xyz(
-                                    random::<f32>() * 3.0 + 1.5,
-                                    2.5,
-                                    random::<f32>() * 3.0 + 1.5,
-                                )),
-                                ..default()
-                            },
-                            LockedAxes::ROTATION_LOCKED,
-                            // FIXME: replace with friction
-                            Damping {
-                                linear_damping: 2.0,
-                                angular_damping: 0.0,
-                            },
-                        ));
+                                PhysicsBundle {
+                                    collider: Collider::capsule_y(
+                                        capsule_segment_half_height,
+                                        capsule_diameter / 2.0,
+                                    ),
+                                    trans: TransformBundle::from_transform(Transform::from_xyz(
+                                        random::<f32>() * 3.0 + 1.5,
+                                        2.5,
+                                        random::<f32>() * 3.0 + 1.5,
+                                    )),
+                                    ..default()
+                                },
+                                LockedAxes::ROTATION_LOCKED,
+                                // FIXME: replace with friction
+                                Damping {
+                                    linear_damping: 2.0,
+                                    angular_damping: 0.0,
+                                },
+                            ))
+                            .id();
+                        player_map.0.insert(*client_id, entity);
                     }
                     ServerEvent::ClientDisconnected { client_id, reason } => {
                         info!("client {client_id} disconnected: {reason}");
-                        for (e, p) in clients.iter() {
-                            if &p.0 == client_id {
-                                commands.entity(e).despawn_recursive();
-                            }
-                        }
+                        commands
+                            .entity(player_map.0.remove(client_id).expect(
+                                "Disconnect event should only trigger for connected clients",
+                            ))
+                            .despawn_recursive();
                     }
                 }
             }
@@ -171,6 +179,9 @@ impl Plugin for PetriServerPlugin {
         }
     }
 }
+
+#[derive(Resource, Default, Debug)]
+struct PlayerMap(HashMap<ClientId, Entity>);
 
 // TODO: is it ok to create default handle?
 #[derive(Resource, Default)]
@@ -239,6 +250,24 @@ fn move_clients(
         } else {
             error!("POLTERGEIST IS MOVING");
         }
+    }
+}
+
+fn apply_aim(
+    mut events: EventReader<FromClient<Aim>>,
+    mut player: Query<&mut ReplicatedAim>,
+    map: Res<PlayerMap>,
+) {
+    for e in events.read() {
+        let Some(entity) = map.0.get(&e.client_id) else {
+            error!("Unknown client id {}", e.client_id);
+            continue;
+        };
+        let Ok(mut aim) = player.get_mut(*entity) else {
+            error!("Player does not have aim component {}", e.client_id);
+            continue;
+        };
+        aim.0 = e.event.0;
     }
 }
 
