@@ -121,11 +121,18 @@ impl Plugin for PetriServerPlugin {
                     }
                     ServerEvent::ClientDisconnected { client_id, reason } => {
                         info!("client {client_id} disconnected: {reason}");
-                        commands
-                            .entity(player_map.0.remove(client_id).expect(
-                                "Disconnect event should only trigger for connected clients",
-                            ))
-                            .despawn_recursive();
+                        if let Some(e) = player_map.0.remove(client_id) {
+                            if let Some(e) = commands.get_entity(e) {
+                                e.despawn_recursive();
+                            } else {
+                                info!(
+                                    "Entity for client {client_id} does not exist. \
+                                    Possibly the player has fallen through the floor"
+                                )
+                            }
+                        } else {
+                            info!("Unknown client {client_id} disconnected ")
+                        }
                     }
                 }
             }
