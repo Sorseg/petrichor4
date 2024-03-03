@@ -20,8 +20,8 @@ use bevy_replicon::{
     },
 };
 use petri_shared::{
-    get_player_capsule_size, Aim, Appearance, MoveDirection, Player, ReplicatedAim, ReplicatedPos,
-    SetName, Tint, PLAYER_HEIGHT,
+    get_player_capsule_size, AdminCommand, Aim, Appearance, MoveDirection, Player, ReplicatedAim,
+    ReplicatedPos, SetName, Tint, PLAYER_HEIGHT,
 };
 
 use crate::login_plugin::{CurrentUserLogin, LoginPlugin};
@@ -36,6 +36,8 @@ pub enum PetriState {
 
 impl Plugin for PetriClientPlugin {
     fn build(&self, app: &mut App) {
+        let player_has_spawned = any_with_component::<Eyes>;
+
         app.insert_state(PetriState::Login)
             .add_plugins(LoginPlugin)
             .add_systems(
@@ -47,8 +49,13 @@ impl Plugin for PetriClientPlugin {
                 (
                     grab_mouse,
                     send_name.run_if(client_just_connected),
-                    (aim, hud_update_entity_name_plaques, send_movement)
-                        .run_if(any_with_component::<Eyes>),
+                    (
+                        aim,
+                        hud_update_entity_name_plaques,
+                        send_movement,
+                        create_wall,
+                    )
+                        .run_if(player_has_spawned),
                     hydrate_entities,
                     move_entities_from_network,
                     log_entity_names.run_if(on_timer(Duration::from_secs(1))),
@@ -349,5 +356,17 @@ fn log_entity_names(e: Query<&Name>) {
     debug!("Entities:");
     for e in &e {
         debug!("{e}");
+    }
+}
+
+fn create_wall(
+    mouse: Res<ButtonInput<MouseButton>>,
+    eyes: Query<&GlobalTransform, With<Eyes>>,
+    mut events: EventWriter<AdminCommand>,
+) {
+    if mouse.just_pressed(MouseButton::Left) {
+        let eyes = eyes.single();
+        let at = eyes.translation() + eyes.forward() * 3.0;
+        events.send(AdminCommand::SpawnBoxWall { side_size: 3, at });
     }
 }
