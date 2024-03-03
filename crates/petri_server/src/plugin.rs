@@ -112,7 +112,7 @@ impl Plugin for PetriServerPlugin {
                                 LockedAxes::ROTATION_LOCKED,
                                 // FIXME: replace with friction
                                 Damping {
-                                    linear_damping: 2.0,
+                                    linear_damping: 0.5,
                                     angular_damping: 0.0,
                                 },
                             ))
