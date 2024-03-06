@@ -248,6 +248,8 @@ fn move_clients(
         .map(|(Player(client_id), force, props)| (client_id, (force, props)))
         .collect();
 
+    // FIXME: If network loses packets, the player runs slower
+    // TODO: remember the intent for at least half a second?
     for event in events.read() {
         const KONSTANTA: f32 = 0.1;
 
