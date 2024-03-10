@@ -4,6 +4,10 @@ use bevy::{
 };
 use thiserror::Error;
 
+/// Allows loading assets as blobs of bytes
+///
+/// This is a temporary measure as the logic of converting bytes into assets
+/// should belong in a custom asset-loader instead
 pub(crate) struct BlobLoaderPlugin;
 
 #[derive(Asset, TypePath, Debug)]
