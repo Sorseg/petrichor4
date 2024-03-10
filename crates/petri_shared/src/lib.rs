@@ -1,4 +1,4 @@
-mod terrain;
+pub mod terrain;
 
 use bevy::prelude::*;
 use bevy_replicon::{prelude::*, renet::ClientId};
