@@ -45,7 +45,7 @@ impl Plugin for PetriServerPlugin {
                     load_collider_from_mesh,
                     move_clients,
                     apply_aim,
-                    update_player_pos,
+                    update_entities_pos,
                     handle_admin_commands,
                     kill_y,
                 ),
@@ -138,7 +138,7 @@ impl Plugin for PetriServerPlugin {
             }
         }
 
-        fn update_player_pos(
+        fn update_entities_pos(
             mut players: Query<(&GlobalTransform, &mut ReplicatedPos), Changed<GlobalTransform>>,
         ) {
             players.iter_mut().for_each(|(local_pos, mut shared_pos)| {
