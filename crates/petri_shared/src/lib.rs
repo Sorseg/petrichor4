@@ -1,3 +1,5 @@
+mod terrain;
+
 use bevy::prelude::*;
 use bevy_replicon::{prelude::*, renet::ClientId};
 use serde::{Deserialize, Serialize};
@@ -11,6 +13,8 @@ pub struct Player(pub ClientId);
 #[derive(Event, Debug, Default, Deserialize, Serialize)]
 pub struct MoveDirection(pub Vec2);
 
+/// FIXME: Can this be removed to just replicate [Transform]?
+/// e.g. https://github.com/cryscan/dollis/blob/2ebe33535b7c3ea291927ffb263f7b4ecdd19d0d/src/core/network.rs#L26
 #[derive(Component, Serialize, Deserialize)]
 pub struct ReplicatedPos(pub GlobalTransform);
 
