@@ -6,9 +6,13 @@
 //! Only non-uniform cubes generate surfaces, so only they are
 //! sent to the client and converted to colliders   
 
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{
+    prelude::*,
+    utils::{info, HashMap},
+};
 use itertools::iproduct;
 use serde::{Deserialize, Serialize};
+use transvoxel::transition_sides::TransitionSides;
 
 use crate::ReplicatedPos;
 
@@ -48,7 +52,7 @@ pub fn sample_terrain() -> HashMap<(isize, isize, isize), TerrainData> {
                 (chunk_y * 10 + y) as f32,
                 (chunk_z * 10 + z) as f32,
             );
-            let val = (gx / 3.0).sin() + (gz / 3.0).sin() - gy;
+            let val = gx / 10.0 + gz / 30.0 - gy;
             data.0[z as usize][y as usize][x as usize] = if val > 0.0 {
                 (TerrainType::MoonDust, (val * 255.0) as u8)
             } else {
@@ -61,48 +65,68 @@ pub fn sample_terrain() -> HashMap<(isize, isize, isize), TerrainData> {
 }
 
 impl TerrainData {
-    // This method takes ~126 microseconds on my machine per invocation with opt-level 1
+    // on AMD Ryzen 3900X in release mode (without lto)
+    // This method takes ~150 microseconds
     pub fn get_polygons(&self) -> transvoxel::generic_mesh::Mesh<f32> {
+        // FIXME: incorporate voxel size
         let threshold = 0f32;
 
-        // Then you need to decide for which region of the world you want to generate the mesh, and how
-        // many subdivisions should be used (the "resolution"). You also need to tell which sides of the
-        // block need to be transition (double-resolution) faces. We use `no_side` here for simplicity,
-        // and will get just a regular Marching Cubes extraction, but the Transvoxel transitions can be
-        // obtained simply by providing some sides instead (that is shown a bit later):
         use transvoxel::prelude::*;
-        let subdivisions = 11;
-        let block = Block::from([-0.1, -0.1, -0.1], 11.0, subdivisions);
-        let transition_sides = transition_sides::no_side();
+        let subdivisions = TERRAIN_CHUNK_SIDE_LEN;
 
-        // Finally, you can run the mesh extraction:
+        let block = Block::from([0.0, 0.0, 0.0], 10.0, subdivisions);
+        let transition_sides = TransitionSides::full();
+
         use transvoxel::generic_mesh::GenericMeshBuilder;
-        let builder = GenericMeshBuilder::new();
-        let builder = extract_from_field(
-            &|x: f32, y: f32, z: f32| {
-                // if the sampling point is outside the cell, treat it as air,
-                // so the algorithm generates walls for colliders
-                // for proper decomposition
-                // but these are unnecessary for the visible mesh, so
-                // there is a possible optimization here to make a separate run for
-                // visible mesh
-                if [x, y, z].iter().any(|n| !(0.0..=9.0).contains(n)) {
-                    return -1.0;
-                }
+        let sampled = std::sync::Mutex::new(std::collections::HashSet::new());
 
-                let (terrain_type, val) =
-                    &self.0[z.round() as usize][y.round() as usize][x.round() as usize];
-                if matches!(terrain_type, TerrainType::Air) {
-                    -0.1
-                } else {
-                    *val as f32 / 255.0
+        let value_getter = |x: f32, y: f32, z: f32| {
+            // make value in the middle of the block
+            let x = x + 0.49;
+            let y = y + 0.49;
+            let z = z + 0.49;
+
+            // if the sampling point is outside the cell, treat it as air,
+            // so the algorithm generates walls for colliders
+            // for proper decomposition
+            // but these are unnecessary for the visible mesh, so
+            // there is a possible optimization here to make a separate run for
+            // visible mesh
+            if [x, y, z].iter().any(|n| !(0.0..=9.9).contains(n)) {
+                // this is a low value, so the wall is generated close to the
+                // grid
+                return -0.1;
+            }
+
+            let (terrain_type, val) = &self.0[z as usize][y as usize][x as usize];
+
+            if matches!(terrain_type, TerrainType::Air) {
+                -0.1
+            } else {
+                1.0 / (256.0 - *val as f32)
+            }
+        };
+        let builder = extract_from_field(
+            &|x, y, z| {
+                let res = value_getter(x, y, z);
+                if (3.0..4.0).contains(&x) || (3.0..4.0).contains(&z) {
+                    sampled
+                        .lock()
+                        .unwrap()
+                        .insert(((y * 1000.0) as i32, (res * 1000.0) as i32));
                 }
+                res
             },
             &block,
             threshold,
             transition_sides,
-            builder,
+            GenericMeshBuilder::new(),
         );
-        builder.build()
+
+        let res = builder.build();
+        let mut sampled = sampled.lock().unwrap().iter().copied().collect::<Vec<_>>();
+        sampled.sort();
+        info!("Sampled {:?}", sampled);
+        res
     }
 }

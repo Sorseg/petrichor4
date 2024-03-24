@@ -19,4 +19,4 @@ dns-lookup = "2.0.4"
 
 [profile.release]
 # uncomment for profiling
-# debug = true
+debug = true

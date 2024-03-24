@@ -2,12 +2,14 @@
 //! assign a custom UV mapping for a custom texture,
 //! and how to change the UV mapping at run-time.
 
+use std::time::Instant;
+
 use bevy::{
     prelude::*,
     render::{mesh::Indices, render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
 };
 use itertools::iproduct;
-use petri_shared::terrain::{sample_terrain, TerrainData};
+use petri_shared::terrain::sample_terrain;
 
 // Define a "marker" component to mark the custom mesh. Marker components are often used in Bevy for
 // filtering entities in queries with With, they're usually not queried directly since they don't contain information within them.
@@ -28,10 +30,22 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
     let cells = sample_terrain();
-    for (x, y, z) in iproduct!(-2..=2, -1..=1, -2..=2) {
-        // Create and save a handle to the mesh.
-        let cube_mesh_handle: Handle<Mesh> = meshes.add(create_cube_mesh(&cells[&(x, y, z)]));
+    let mut iterations = 0;
+    let timer = Instant::now();
+    let mut tmp_meshes = Vec::with_capacity(500);
+    for cell_index in iproduct!(-5..=5, -1..=1, -5..=5) {
+        iterations += 1;
 
+        // Create and save a handle to the mesh.
+        tmp_meshes.push((cell_index, cells[&cell_index].get_polygons()));
+        _ = cells[&cell_index].get_polygons();
+    }
+    info!(
+        "Done {iterations} transvoxel iterations, avg {:?} per iteration",
+        timer.elapsed() / iterations
+    );
+    for ((x, y, z), m) in tmp_meshes {
+        let cube_mesh_handle: Handle<Mesh> = meshes.add(create_cube_mesh(&m));
         // Render the mesh with the custom texture using a PbrBundle, add the marker.
         commands.spawn((
             PbrBundle {
@@ -46,7 +60,7 @@ fn setup(
 
     // Transform for the camera and lighting, looking at (0,0,0) (the position of the mesh).
     let camera_and_light_transform =
-        Transform::from_xyz(20.0, 20.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y);
+        Transform::from_xyz(-20.0, 20.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y);
 
     // Camera in 3D space.
     commands.spawn(Camera3dBundle {
@@ -57,6 +71,11 @@ fn setup(
     // Light up the scene.
     commands.spawn(PointLightBundle {
         transform: camera_and_light_transform,
+        point_light: PointLight {
+            range: 600.0,
+            intensity: 10_000_000.0,
+            ..default()
+        },
         ..default()
     });
 
@@ -108,9 +127,8 @@ fn input_handler(
     }
 }
 
-fn create_cube_mesh(cell: &TerrainData) -> Mesh {
-    let mesh = cell.get_polygons();
-    let vertex_count = mesh.positions.len();
+fn create_cube_mesh(mesh: &transvoxel::generic_mesh::Mesh<f32>) -> Mesh {
+    let vertex_count = mesh.positions.len() / 3;
 
     // Keep the mesh data accessible in future frames to be able to mutate it in toggle_texture.
     Mesh::new(
