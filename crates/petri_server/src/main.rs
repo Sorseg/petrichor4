@@ -24,7 +24,11 @@ fn main() {
                 },
             }),
             LogPlugin::default(),
-            AssetPlugin::default(),
+            AssetPlugin {
+                mode: AssetMode::Processed,
+                file_path: "../../asset_sources".into(),
+                ..default()
+            },
             ReplicationPlugins
                 .build()
                 .disable::<ClientPlugin>()
