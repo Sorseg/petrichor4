@@ -1,5 +1,6 @@
 mod blob_assets;
 mod enemy;
+mod petri_obj;
 mod plugin;
 
 use std::time::Duration;
@@ -24,7 +25,15 @@ fn main() {
                 },
             }),
             LogPlugin::default(),
-            AssetPlugin::default(),
+            AssetPlugin {
+                // TODO: add autoprocessing
+                // only processes assets when `bevy/asset_processor` cargo feature is enabled
+                // only live reloads assets when `bevy/file_watcher` cargo feature is enabled
+                mode: AssetMode::Unprocessed,
+
+                file_path: "../../asset_sources".into(),
+                ..default()
+            },
             ReplicationPlugins
                 .build()
                 .disable::<ClientPlugin>()

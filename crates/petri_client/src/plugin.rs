@@ -42,7 +42,7 @@ impl Plugin for PetriClientPlugin {
             .add_plugins(LoginPlugin)
             .add_systems(
                 OnEnter(PetriState::Scene),
-                (setup_scene, setup_connection.map(Result::unwrap)),
+                setup_connection.map(Result::unwrap),
             )
             .add_systems(
                 Update,
@@ -59,6 +59,8 @@ impl Plugin for PetriClientPlugin {
                     hydrate_entities,
                     move_entities_from_network,
                     log_entity_names.run_if(on_timer(Duration::from_secs(1))),
+                    live_reload_scene.run_if(on_event::<AssetEvent<Scene>>()),
+                    respawn_scene,
                 )
                     .run_if(in_state(PetriState::Scene)),
             )
@@ -161,28 +163,6 @@ impl Plugin for PetriClientPlugin {
             transform.rotate_y(-delta.x * sensitivity);
             transform.rotate_local_x(-delta.y * sensitivity);
             events.send(Aim(transform.forward()));
-        }
-
-        /// load the 3d scene
-        fn setup_scene(
-            mut commands: Commands,
-            mut meshes: ResMut<Assets<Mesh>>,
-            mut materials: ResMut<Assets<StandardMaterial>>,
-            asset_server: Res<AssetServer>,
-        ) {
-            commands.spawn(SceneBundle {
-                scene: asset_server.load("petrichor4-intro.glb#Scene0"),
-                ..default()
-            });
-            // circular base
-            commands.spawn(PbrBundle {
-                mesh: meshes.add(Circle::new(4.0)),
-                material: materials.add(Color::WHITE),
-                transform: Transform::from_rotation(Quat::from_rotation_x(
-                    -std::f32::consts::FRAC_PI_2,
-                )),
-                ..default()
-            });
         }
 
         // Player id of the player who is playing this instance of the game
@@ -368,5 +348,36 @@ fn create_wall(
         let eyes = eyes.single();
         let at = eyes.translation() + eyes.forward() * 3.0;
         events.send(AdminCommand::SpawnBoxWall { side_size: 3, at });
+    }
+}
+
+/// Hack around https://github.com/bevyengine/bevy/issues/3759
+fn live_reload_scene(
+    mut commands: Commands,
+    mut events: EventReader<AssetEvent<Scene>>,
+    existing_scenes: Query<(Entity, &Handle<Scene>)>,
+) {
+    for e in events.read() {
+        if let AssetEvent::Modified { id } = e {
+            for (e, handle) in &existing_scenes {
+                if &handle.id() == id {
+                    // despawn here so it is recreated by the respawn_scene system
+                    commands.entity(e).despawn_recursive();
+                }
+            }
+        }
+    }
+}
+
+fn respawn_scene(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    existing_scenes: Query<&Handle<Scene>>,
+) {
+    if existing_scenes.iter().next().is_none() {
+        commands.spawn(SceneBundle {
+            scene: asset_server.load::<Scene>("levels/l0.blend.glb#Scene0"),
+            ..default()
+        });
     }
 }
