@@ -208,37 +208,46 @@ fn sync_colliders(
     entities: Query<(Entity, &Handle<PetriObj>)>,
 ) {
     for e in events.read() {
+        let spawn_collider = |commands: &mut Commands, e, colliders: &PetriObj| {
+            commands.entity(e).with_children(|c| {
+                colliders.colliders.iter().for_each(|coll| {
+                    c.spawn((
+                        RigidBody::Fixed,
+                        Collider::trimesh(
+                            coll.pos
+                                .iter()
+                                .map(|p| Vec3 {
+                                    x: p.x as f32,
+                                    y: p.y as f32,
+                                    z: p.z as f32,
+                                })
+                                .collect(),
+                            coll.indices
+                                .chunks(3)
+                                .map(|c| [c[0] as u32, c[1] as u32, c[2] as u32])
+                                .collect(),
+                        ),
+                    ));
+                })
+            });
+        };
         match e {
             AssetEvent::LoadedWithDependencies { id } => {
                 let colliders = colliders.get(*id).expect("loaded resource should exist");
                 for (e, handle) in &entities {
                     if &handle.id() == id {
-                        commands.entity(e).with_children(|c| {
-                            colliders.colliders.iter().for_each(|coll| {
-                                c.spawn((
-                                    RigidBody::Fixed,
-                                    Collider::trimesh(
-                                        coll.pos
-                                            .iter()
-                                            .map(|p| Vec3 {
-                                                x: p.x as f32,
-                                                y: p.y as f32,
-                                                z: p.z as f32,
-                                            })
-                                            .collect(),
-                                        coll.indices
-                                            .chunks(3)
-                                            .map(|c| [c[0] as u32, c[1] as u32, c[2] as u32])
-                                            .collect(),
-                                    ),
-                                ));
-                            })
-                        });
+                        spawn_collider(&mut commands, e, colliders);
                     }
                 }
             }
             AssetEvent::Modified { id } => {
-                todo!("Update collider for entities");
+                let colliders = colliders.get(*id).expect("loaded resource should exist");
+                for (e, handle) in &entities {
+                    if &handle.id() == id {
+                        commands.entity(e).despawn_descendants();
+                        spawn_collider(&mut commands, e, colliders);
+                    }
+                }
             }
             _ => {}
         }
