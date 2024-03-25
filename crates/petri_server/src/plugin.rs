@@ -24,15 +24,18 @@ use crate::{
     blob_assets::{Blob, BlobLoaderPlugin},
     enemy::EnemyPlugin,
 };
+use crate::petri_obj::PetriObj;
 
 pub struct PetriServerPlugin;
 
 impl Plugin for PetriServerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(BlobLoaderPlugin)
+        app
+            // plugins
             .add_plugins(EnemyPlugin)
-            .init_resource::<ObjFileWithColliderHandle>()
+            // resources
             .init_resource::<PlayerMap>()
+            // systems
             .add_systems(
                 Startup,
                 (load_collider, setup_server_networking.map(Result::unwrap)),
@@ -196,46 +199,48 @@ impl Plugin for PetriServerPlugin {
 #[derive(Resource, Default, Debug)]
 struct PlayerMap(HashMap<ClientId, Entity>);
 
-// TODO: is it ok to create default handle?
-#[derive(Resource, Default)]
-struct ObjFileWithColliderHandle(Handle<Blob>);
-
-fn load_collider_from_mesh(
-    mut commands: Commands,
-    mut ev_asset: EventReader<AssetEvent<Blob>>,
-    blob: Res<ObjFileWithColliderHandle>,
-    blobs: Res<Assets<Blob>>,
-    mut loaded: Local<bool>,
-) {
-    if *loaded {
-        return;
-    }
-    // FIXME: move all of this to a new "ColliderAssetLoader"
-    if ev_asset.read().next().is_some() {
-        if let Some(Blob(bytes)) = blobs.get(&blob.0) {
-            info!("Gotmesh? {:x?}", &bytes[0..10]);
-            let obj: Obj<Position> = load_obj(Cursor::new(bytes)).unwrap();
-            commands.spawn(Collider::trimesh(
-                obj.vertices
-                    .into_iter()
-                    .map(|v| Vec3 {
-                        x: v.position[0],
-                        y: v.position[1],
-                        z: v.position[2],
-                    })
-                    .collect(),
-                obj.indices
-                    .chunks(3)
-                    .map(|c| [c[0] as u32, c[1] as u32, c[2] as u32])
-                    .collect(),
-            ));
-            *loaded = true;
-        }
-    }
+fn sync_colliders(colliders: Res<Assets<PetriObj>>,entities: Query<&Handle<PetriObj>>) {
+    
 }
-
-fn load_collider(asset_server: Res<AssetServer>, mut blob: ResMut<ObjFileWithColliderHandle>) {
-    blob.0 = asset_server.load("level_collider.obj");
+// 
+// fn load_collider_from_mesh(
+//     mut commands: Commands,
+//     mut ev_asset: EventReader<AssetEvent<Blob>>,
+//     blob: Res<ObjFileWithColliderHandle>,
+//     blobs: Res<Assets<Blob>>,
+//     mut loaded: Local<bool>,
+// ) {
+//     if *loaded {
+//         return;
+//     }
+//     // // FIXME: move all of this to a new "ColliderAssetLoader"
+//     // if ev_asset.read().next().is_some() {
+//     //     if let Some(Blob(bytes)) = blobs.get(&blob.0) {
+//     //         info!("Gotmesh? {:x?}", &bytes[0..10]);
+//     //         let obj: Obj<Position> = load_obj(Cursor::new(bytes)).unwrap();
+//     //         commands.spawn(Collider::trimesh(
+//     //             obj.vertices
+//     //                 .into_iter()
+//     //                 .map(|v| Vec3 {
+//     //                     x: v.position[0],
+//     //                     y: v.position[1],
+//     //                     z: v.position[2],
+//     //                 })
+//     //                 .collect(),
+//     //             obj.indices
+//     //                 .chunks(3)
+//     //                 .map(|c| [c[0] as u32, c[1] as u32, c[2] as u32])
+//     //                 .collect(),
+//     //         ));
+//     //         *loaded = true;
+//     //     }
+//     // }
+// }
+// 
+fn load_collider(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn(
+        asset_server.load::<PetriObj>("levels/l0.blend.obj")
+    );
 }
 
 fn move_clients(

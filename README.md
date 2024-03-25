@@ -20,16 +20,17 @@ cargo run --bin petri_client --features bevy/dynamic_linking
 
 ## Assets
 
-When working on the assets:
+When saving blend files, check "compressed"
+
+When working on the assets,
 
 excerpt from [bevy doc](https://bevyengine.org/news/bevy-0-12/#enabling-pre-processing):
 
-> cargo run --features bevy/asset_processor
-
+> `cargo run --features bevy/asset_processor`
 > This will start the AssetProcessor in parallel with your app.
 > It will run until all assets are read from their source
 
-`asset_sources` in the case of Petrichor4
+(`asset_sources` in the case of Petrichor4)
 
 > processed, and the results have been written to their destination 
 > (defaults to the imported_assets folder). 
