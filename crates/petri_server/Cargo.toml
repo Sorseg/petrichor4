@@ -14,5 +14,5 @@ anyhow = {workspace = true}
 rand = "0.8"
 bevy_rapier3d = { version = "0.25" , default-features = false, features = ["dim3"] }
 thiserror = "1.0.57"
-obj-rs = "0.7.1"
 dns-lookup = {workspace = true}
+wavefront_obj = "10.0.0"

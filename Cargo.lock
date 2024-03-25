@@ -202,6 +202,12 @@ checksum = "6b4930d2cb77ce62f89ee5d5289b4ac049559b1c45539271f5ed4fdc7db34545"
 
 [[package]]
 name = "arrayvec"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
+
+[[package]]
+name = "arrayvec"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96d30a06541fbafbc7f82ed10c06164cfbd2c401138f6addd8404629c4b16711"
@@ -1162,7 +1168,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "30cca6d3674597c30ddf2c587bf8d9d65c9a84d2326d941cc79c9842dfe0ef52"
 dependencies = [
  "arrayref",
- "arrayvec",
+ "arrayvec 0.7.4",
  "cc",
  "cfg-if",
  "constant_time_eq",
@@ -2426,6 +2432,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "lexical"
+version = "5.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f404a90a744e32e8be729034fc33b90cf2a56418fbf594d69aa3c0214ad414e5"
+dependencies = [
+ "cfg-if",
+ "lexical-core",
+]
+
+[[package]]
+name = "lexical-core"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6607c62aa161d23d17a9072cc5da0be67cdfc89d3afb1e8d9c842bebc2525ffe"
+dependencies = [
+ "arrayvec 0.5.2",
+ "bitflags 1.3.2",
+ "cfg-if",
+ "ryu",
+ "static_assertions",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.153"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2792,16 +2821,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "obj-rs"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a502182538a65adc7e3843f820eb5a4bd3ff395017e0ba6e3ccad404e9ea1da3"
-dependencies = [
- "num-traits",
- "serde",
-]
-
-[[package]]
 name = "objc"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2988,7 +3007,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ccba18a65dba56c08dadfa936e0c9efbc883b3a26dc77d2685f78be10f7667c"
 dependencies = [
  "approx",
- "arrayvec",
+ "arrayvec 0.7.4",
  "bitflags 1.3.2",
  "downcast-rs",
  "either",
@@ -3044,11 +3063,11 @@ dependencies = [
  "bevy_rapier3d",
  "bevy_replicon",
  "dns-lookup",
- "obj-rs",
  "petri_shared",
  "rand",
  "serde",
  "thiserror",
+ "wavefront_obj",
 ]
 
 [[package]]
@@ -3225,7 +3244,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92d07a833e0aa3bc57010caaa50bf75fa78afc03a74207607db740da4e4579a1"
 dependencies = [
  "approx",
- "arrayvec",
+ "arrayvec 0.7.4",
  "bit-vec",
  "bitflags 1.3.2",
  "crossbeam",
@@ -3628,7 +3647,7 @@ version = "0.3.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c2287b6d7f721ada4cddf61ade5e760b2c6207df041cac9bfaa192897362fd3"
 dependencies = [
- "arrayvec",
+ "arrayvec 0.7.4",
  "grid",
  "num-traits",
  "slotmap",
@@ -3970,6 +3989,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af190c94f2773fdb3729c55b007a722abb5384da03bc0986df4c289bf5567e96"
 
 [[package]]
+name = "wavefront_obj"
+version = "10.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b44bbcea20221556597a89462dba84fd4a1ece9a56ab9ec017f872f33b34e8a"
+dependencies = [
+ "lexical",
+]
+
+[[package]]
 name = "web-sys"
 version = "0.3.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3995,7 +4023,7 @@ version = "0.19.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4b1213b52478a7631d6e387543ed8f642bc02c578ef4e3b49aca2a29a7df0cb"
 dependencies = [
- "arrayvec",
+ "arrayvec 0.7.4",
  "cfg-if",
  "cfg_aliases",
  "js-sys",
@@ -4020,7 +4048,7 @@ version = "0.19.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9f6b033c2f00ae0bc8ea872c5989777c60bc241aac4e58b24774faa8b391f78"
 dependencies = [
- "arrayvec",
+ "arrayvec 0.7.4",
  "bit-vec",
  "bitflags 2.5.0",
  "cfg_aliases",
@@ -4047,7 +4075,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49f972c280505ab52ffe17e94a7413d9d54b58af0114ab226b9fc4999a47082e"
 dependencies = [
  "android_system_properties",
- "arrayvec",
+ "arrayvec 0.7.4",
  "ash",
  "bit-set",
  "bitflags 2.5.0",

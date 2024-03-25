@@ -26,9 +26,11 @@ fn main() {
             }),
             LogPlugin::default(),
             AssetPlugin {
+                // TODO: add autoprocessing
                 // only processes assets when `bevy/asset_processor` cargo feature is enabled
                 // only live reloads assets when `bevy/file_watcher` cargo feature is enabled
-                mode: AssetMode::Processed,
+                mode: AssetMode::Unprocessed,
+
                 file_path: "../../asset_sources".into(),
                 ..default()
             },

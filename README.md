@@ -26,7 +26,7 @@ When working on the assets,
 
 excerpt from [bevy doc](https://bevyengine.org/news/bevy-0-12/#enabling-pre-processing):
 
-> `cargo run --features bevy/asset_processor`
+> `cargo run --features bevy/asset_processor,bevy/file_watcher`
 > This will start the AssetProcessor in parallel with your app.
 > It will run until all assets are read from their source
 

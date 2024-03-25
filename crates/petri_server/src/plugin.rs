@@ -13,7 +13,6 @@ use bevy_replicon::{
         ClientId, ConnectionConfig, ServerEvent,
     },
 };
-use obj::{load_obj, Obj, Position};
 use petri_shared::{
     get_player_capsule_size, AdminCommand, Aim, Appearance, MoveDirection, Player, ReplicatedAim,
     ReplicatedPos, ReplicationBundle, SetName, Tint,
@@ -23,8 +22,8 @@ use rand::random;
 use crate::{
     blob_assets::{Blob, BlobLoaderPlugin},
     enemy::EnemyPlugin,
+    petri_obj::{PetriObj, PetriObjLoader},
 };
-use crate::petri_obj::PetriObj;
 
 pub struct PetriServerPlugin;
 
@@ -35,6 +34,9 @@ impl Plugin for PetriServerPlugin {
             .add_plugins(EnemyPlugin)
             // resources
             .init_resource::<PlayerMap>()
+            // assets
+            .init_asset::<PetriObj>()
+            .init_asset_loader::<PetriObjLoader>()
             // systems
             .add_systems(
                 Startup,
@@ -45,7 +47,7 @@ impl Plugin for PetriServerPlugin {
                 (
                     server_event_system,
                     receive_names,
-                    load_collider_from_mesh,
+                    sync_colliders,
                     move_clients,
                     apply_aim,
                     update_player_pos,
@@ -199,10 +201,50 @@ impl Plugin for PetriServerPlugin {
 #[derive(Resource, Default, Debug)]
 struct PlayerMap(HashMap<ClientId, Entity>);
 
-fn sync_colliders(colliders: Res<Assets<PetriObj>>,entities: Query<&Handle<PetriObj>>) {
-    
+fn sync_colliders(
+    mut commands: Commands,
+    mut events: EventReader<AssetEvent<PetriObj>>,
+    colliders: Res<Assets<PetriObj>>,
+    entities: Query<(Entity, &Handle<PetriObj>)>,
+) {
+    for e in events.read() {
+        match e {
+            AssetEvent::LoadedWithDependencies { id } => {
+                let colliders = colliders.get(*id).expect("loaded resource should exist");
+                for (e, handle) in &entities {
+                    if &handle.id() == id {
+                        commands.entity(e).with_children(|c| {
+                            colliders.colliders.iter().for_each(|coll| {
+                                c.spawn((
+                                    RigidBody::Fixed,
+                                    Collider::trimesh(
+                                        coll.pos
+                                            .iter()
+                                            .map(|p| Vec3 {
+                                                x: p.x as f32,
+                                                y: p.y as f32,
+                                                z: p.z as f32,
+                                            })
+                                            .collect(),
+                                        coll.indices
+                                            .chunks(3)
+                                            .map(|c| [c[0] as u32, c[1] as u32, c[2] as u32])
+                                            .collect(),
+                                    ),
+                                ));
+                            })
+                        });
+                    }
+                }
+            }
+            AssetEvent::Modified { id } => {
+                todo!("Update collider for entities");
+            }
+            _ => {}
+        }
+    }
 }
-// 
+//
 // fn load_collider_from_mesh(
 //     mut commands: Commands,
 //     mut ev_asset: EventReader<AssetEvent<Blob>>,
@@ -236,11 +278,9 @@ fn sync_colliders(colliders: Res<Assets<PetriObj>>,entities: Query<&Handle<Petri
 //     //     }
 //     // }
 // }
-// 
+//
 fn load_collider(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(
-        asset_server.load::<PetriObj>("levels/l0.blend.obj")
-    );
+    commands.spawn(asset_server.load::<PetriObj>("levels/l0.blend.obj"));
 }
 
 fn move_clients(

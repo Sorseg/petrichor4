@@ -2,15 +2,16 @@ use std::io::Cursor;
 
 use bevy::{
     asset::{io::Reader, AssetLoader, AsyncReadExt, BoxedFuture, LoadContext},
+    log::info,
     prelude::{Asset, TypePath},
 };
-use obj::{load_obj, Obj, Position};
 use thiserror::Error;
+use wavefront_obj::obj::{Primitive, Vertex};
 
 pub(crate) struct Collider {
     name: String,
-    pos: Vec<Position>,
-    indices: Vec<u16>,
+    pub(crate) pos: Vec<Vertex>,
+    pub(crate) indices: Vec<u16>,
 }
 
 /// Represents a server-side view of a level
@@ -20,7 +21,6 @@ pub(crate) struct Collider {
 /// - where the player spawns
 #[derive(TypePath, Asset)]
 pub(crate) struct PetriObj {
-    // TODO
     pub(crate) colliders: Vec<Collider>,
 }
 
@@ -32,7 +32,7 @@ pub(crate) enum PetriObjLoaderError {
     #[error("Could not load asset: {0}")]
     Io(#[from] std::io::Error),
     #[error("Cannot parse obj file: {0}")]
-    Obj(#[from] obj::ObjError),
+    Obj(#[from] wavefront_obj::mtl::ParseError),
 }
 
 impl AssetLoader for PetriObjLoader {
@@ -51,20 +51,33 @@ impl AssetLoader for PetriObjLoader {
         Box::pin(async move {
             let mut bytes = Vec::new();
             reader.read_to_end(&mut bytes).await?;
-            let mut cursor = Cursor::new(&bytes);
-            let mut colliders = vec![];
-            while cursor.position() < bytes.len() as u64 {
-                let obj: Obj<Position> = load_obj(&mut cursor)?;
-                let Some(name) = obj.name else { continue };
-                if let Some(name) = name.strip_prefix("collider_") {
-                    colliders.push(Collider {
-                        name: name.to_string(),
-                        pos: obj.vertices,
-                        indices: obj.indices,
+            // let mut cursor = Cursor::new(&bytes);
+
+            let obj = wavefront_obj::obj::parse(String::from_utf8_lossy(&bytes))?;
+            Ok(PetriObj {
+                colliders: obj
+                    .objects
+                    .iter()
+                    .filter(|o| o.name.to_ascii_lowercase().starts_with("collider_"))
+                    .map(|o| Collider {
+                        name: o.name.clone(),
+                        pos: o.vertices.clone(),
+                        indices: o
+                            .geometry
+                            .iter()
+                            .flat_map(|g| &g.shapes)
+                            .flat_map(|s| match s.primitive {
+                                Primitive::Triangle(v1, v2, v3) => [
+                                    v1.0.try_into().unwrap(),
+                                    v2.0.try_into().unwrap(),
+                                    v3.0.try_into().unwrap(),
+                                ],
+                                _ => todo!("Graceful error"),
+                            })
+                            .collect(),
                     })
-                }
-            }
-            Ok(PetriObj { colliders })
+                    .collect(),
+            })
         })
     }
 }

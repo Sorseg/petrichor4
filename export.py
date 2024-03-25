@@ -4,6 +4,7 @@ objects = bpy.context.scene.objects
 
 
 def is_server(obj: bpy.types.Object) -> bool:
+    """This logic needs to be synchronized with `petri_obj.rs`"""
     return obj.name.lower().startswith(("collider", "info_"))
 
 
