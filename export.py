@@ -7,6 +7,10 @@ def is_server(obj: bpy.types.Object) -> bool:
     """This logic needs to be synchronized with `petri_obj.rs`"""
     return obj.name.lower().startswith(("collider", "info_"))
 
+def is_client(obj: bpy.types.Object) -> bool:
+    """This logic needs to be synchronized with `petri_obj.rs`"""
+    # todo: filter out server only colliders, triggers, etc
+    return True
 
 def export_server(fname: str):
     for obj in objects:
@@ -25,7 +29,7 @@ def export_server(fname: str):
     
 def export_client(fname: str):
     for obj in objects:
-        obj.select_set(not is_server(obj))
+        obj.select_set(is_client(obj))
 
     bpy.ops.export_scene.gltf(
         filepath=fname,
